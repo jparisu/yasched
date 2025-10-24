@@ -34,3 +34,12 @@ repos:
     hooks:
       - id: codespell
         args: ["--config", "spelling/.codespellrc"]
+
+  # mkdocs build check
+  - repo: local
+    hooks:
+      - id: mkdocs-build
+        name: mkdocs build (docs must compile)
+        entry: mkdocs build --strict --quiet
+        language: system
+        pass_filenames: false
