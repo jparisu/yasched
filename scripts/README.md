@@ -5,7 +5,7 @@ This directory contains scripts for managing the yasched Streamlit app as a daem
 ## Scripts
 
 - `start_daemon.sh` - Start the yasched daemon
-- `stop_daemon.sh` - Stop the yasched daemon  
+- `stop_daemon.sh` - Stop the yasched daemon
 - `status_daemon.sh` - Check daemon status
 - `restart_daemon.sh` - Restart the daemon
 

@@ -48,7 +48,7 @@ case $choice in
         echo "✅ Installation complete!"
         echo "   Run './quickstart.sh' again to use yasched"
         ;;
-    
+
     2)
         echo ""
         echo "🧪 Running tests..."
@@ -57,7 +57,7 @@ case $choice in
         echo ""
         echo "✅ Tests complete!"
         ;;
-    
+
     3)
         echo ""
         echo "🖥️  Starting web interface..."
@@ -66,13 +66,13 @@ case $choice in
         echo ""
         streamlit run app/main.py
         ;;
-    
+
     4)
         echo ""
         echo "🚀 Starting daemon..."
         ./scripts/start_daemon.sh
         ;;
-    
+
     5)
         echo ""
         echo "📝 Running simple example..."
@@ -81,13 +81,13 @@ case $choice in
         export PYTHONPATH=$(pwd):$PYTHONPATH
         python3 examples/simple_example.py
         ;;
-    
+
     6)
         echo ""
         echo "📚 Building documentation..."
         mkdocs serve
         ;;
-    
+
     *)
         echo "Invalid choice. Please run the script again."
         exit 1

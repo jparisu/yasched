@@ -117,16 +117,16 @@ Example docstring:
 def my_function(param1: str, param2: int) -> bool:
     """
     Brief description of the function.
-    
+
     More detailed description if needed.
-    
+
     Args:
         param1: Description of param1.
         param2: Description of param2.
-        
+
     Returns:
         Description of return value.
-        
+
     Raises:
         ValueError: Description of when this is raised.
     """
@@ -147,10 +147,10 @@ def test_feature_name() -> None:
     """Test that feature works correctly."""
     # Arrange
     input_data = "test"
-    
+
     # Act
     result = my_function(input_data)
-    
+
     # Assert
     assert result == expected_value
 ```
