@@ -10,12 +10,14 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
+  # ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.9
     hooks:
       - id: ruff
         args: [--fix]
 
+  # mypy
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0
     hooks:
@@ -24,6 +26,7 @@ repos:
         args: [--ignore-missing-imports]
         exclude: ^tests/
 
+  # codespell
   - repo: https://github.com/codespell-project/codespell
     rev: v2.3.0
     hooks:

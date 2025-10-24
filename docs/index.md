@@ -1,6 +1,6 @@
 # yasched
 
-Welcome to **yasched** - a simple yet powerful task scheduler that allows you to define and manage scheduled tasks using YAML configuration files.
+Welcome to `yasched` - a simple yet powerful task scheduler that allows you to define and manage scheduled tasks using YAML configuration files.
 
 ## Features
 
@@ -13,33 +13,7 @@ Welcome to **yasched** - a simple yet powerful task scheduler that allows you to
 
 ## Quick Example
 
-Create a simple task configuration in YAML:
-
-```yaml
-tasks:
-  - name: daily_report
-    description: Generate daily report
-    schedule: every day at 09:00
-    action: print
-    enabled: true
-    parameters:
-      message: "Time to generate the daily report!"
-```
-
-Load and run it with Python:
-
-```python
-from yasched import create_scheduler_from_config
-
-scheduler = create_scheduler_from_config("config.yaml")
-scheduler.run()
-```
-
-Or use the web interface:
-
-```bash
-streamlit run app/main.py
-```
+> Work in progress... ToDo
 
 ## Why yasched?
 
