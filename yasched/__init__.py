@@ -7,7 +7,7 @@ defined in YAML configuration files.
 
 __version__ = "0.1.0"
 
-from yasched.scheduler import Scheduler, Task
 from yasched.config import load_config, validate_config
+from yasched.scheduler import Scheduler, Task
 
 __all__ = ["Scheduler", "Task", "load_config", "validate_config"]

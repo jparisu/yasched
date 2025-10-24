@@ -1,7 +1,7 @@
 """Predefined actions that can be used in task configurations."""
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 def print_action(message: str = "Hello from yasched!", **kwargs: Any) -> None:
     """
     Print a message to stdout.
-    
+
     Args:
         message: Message to print.
         **kwargs: Additional parameters (ignored).
@@ -20,7 +20,7 @@ def print_action(message: str = "Hello from yasched!", **kwargs: Any) -> None:
 def log_action(message: str = "", level: str = "info", **kwargs: Any) -> None:
     """
     Log a message using the logging module.
-    
+
     Args:
         message: Message to log.
         level: Log level (debug, info, warning, error, critical).
@@ -33,7 +33,7 @@ def log_action(message: str = "", level: str = "info", **kwargs: Any) -> None:
 def custom_action(function: str, **kwargs: Any) -> None:
     """
     Execute a custom Python function.
-    
+
     Args:
         function: Fully qualified function name (e.g., 'module.function').
         **kwargs: Parameters to pass to the function.
@@ -44,7 +44,7 @@ def custom_action(function: str, **kwargs: Any) -> None:
 
 
 # Registry of available actions
-ACTIONS: Dict[str, Any] = {
+ACTIONS: dict[str, Any] = {
     "print": print_action,
     "log": log_action,
     "custom": custom_action,
@@ -54,13 +54,13 @@ ACTIONS: Dict[str, Any] = {
 def get_action(action_name: str) -> Any:
     """
     Get an action by name.
-    
+
     Args:
         action_name: Name of the action.
-        
+
     Returns:
         The action callable.
-        
+
     Raises:
         ValueError: If the action doesn't exist.
     """
@@ -72,7 +72,7 @@ def get_action(action_name: str) -> Any:
 def register_action(name: str, action: Any) -> None:
     """
     Register a custom action.
-    
+
     Args:
         name: Name for the action.
         action: Callable to register.

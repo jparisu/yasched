@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "jparisu", email = ""},
+    {name = "jparisu"},
 ]
 keywords = ["scheduler", "yaml", "tasks", "orchestration", "streamlit"]
 classifiers = [
