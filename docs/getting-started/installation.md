@@ -57,4 +57,3 @@ streamlit run app/main.py
 ## Next Steps
 
 - Continue to the [Quick Start Guide](quickstart.md)
-- Learn about [Configuration](configuration.md)

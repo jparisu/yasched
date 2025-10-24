@@ -31,25 +31,6 @@ theme:
     - content.code.annotation
     - content.code.copy
 
-nav:
-  - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-    - Configuration: getting-started/configuration.md
-  - User Guide:
-    - Tasks: user-guide/tasks.md
-    - Actions: user-guide/actions.md
-    - Scheduling: user-guide/scheduling.md
-    - Web Interface: user-guide/web-interface.md
-  - API Reference:
-    - Scheduler: api/scheduler.md
-    - Config: api/config.md
-    - Actions: api/actions.md
-    - Utils: api/utils.md
-  - Contributing: contributing.md
-  - Changelog: changelog.md
-
 plugins:
   - search
   - mkdocstrings:
@@ -58,6 +39,7 @@ plugins:
           options:
             docstring_style: google
             show_source: true
+  - awesome-pages
 
 markdown_extensions:
   - pymdownx.highlight:
