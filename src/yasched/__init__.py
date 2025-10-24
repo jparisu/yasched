@@ -7,7 +7,8 @@ defined in YAML configuration files.
 
 __version__ = "0.1.0"
 
-from yasched.config import load_config, validate_config
-from yasched.scheduler import Scheduler, Task
+import logging
 
-__all__ = ["Scheduler", "Task", "load_config", "validate_config"]
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+__all__ = ["utils"]
