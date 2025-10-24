@@ -1,0 +1,81 @@
+# Sample yasched configuration file
+# This demonstrates various task configurations
+
+tasks:
+  # Simple task that prints a message every minute
+  - name: hello_world
+    description: Print a friendly greeting message
+    schedule: every 1 minute
+    action: print
+    enabled: true
+    parameters:
+      message: "Hello from yasched! The time is now."
+
+  # Task that logs status every 5 minutes
+  - name: status_check
+    description: Log system status periodically
+    schedule: every 5 minutes
+    action: log
+    enabled: true
+    parameters:
+      message: "System status check completed successfully"
+      level: info
+
+  # Daily morning report
+  - name: morning_report
+    description: Generate daily morning report
+    schedule: every day at 09:00
+    action: print
+    enabled: true
+    parameters:
+      message: "Good morning! Starting daily operations."
+
+  # Weekly backup reminder (runs every Monday at 2 AM)
+  - name: backup_reminder
+    description: Weekly backup process reminder
+    schedule: every monday at 02:00
+    action: log
+    enabled: false
+    parameters:
+      message: "Weekly backup process should be initiated"
+      level: warning
+
+  # Frequent health check
+  - name: health_check
+    description: Quick health check every 30 seconds
+    schedule: every 30 seconds
+    action: log
+    enabled: false
+    parameters:
+      message: "Health check: All systems operational"
+      level: debug
+
+  # End of day summary
+  - name: eod_summary
+    description: End of day summary report
+    schedule: every day at 18:00
+    action: print
+    enabled: true
+    parameters:
+      message: "End of day summary: All tasks completed for today."
+
+  # Hourly metrics collection
+  - name: metrics_collection
+    description: Collect system metrics every hour
+    schedule: every 1 hour
+    action: log
+    enabled: true
+    parameters:
+      message: "Metrics collection cycle completed"
+      level: info
+
+  # Custom action example (disabled by default)
+  - name: custom_task
+    description: Example of a custom task action
+    schedule: every 2 hours
+    action: custom
+    enabled: false
+    parameters:
+      function: myapp.tasks.process_data
+      batch_size: 100
+      priority: high
