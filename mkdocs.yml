@@ -1,0 +1,78 @@
+site_name: yasched Documentation
+site_description: Scheduler for agenda and tasks orchestration via YAML
+site_author: jparisu
+site_url: https://jparisu.github.io/yasched
+
+repo_name: jparisu/yasched
+repo_url: https://github.com/jparisu/yasched
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - User Guide:
+    - Tasks: user-guide/tasks.md
+    - Actions: user-guide/actions.md
+    - Scheduling: user-guide/scheduling.md
+    - Web Interface: user-guide/web-interface.md
+  - API Reference:
+    - Scheduler: api/scheduler.md
+    - Config: api/config.md
+    - Actions: api/actions.md
+    - Utils: api/utils.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - admonition
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jparisu/yasched
