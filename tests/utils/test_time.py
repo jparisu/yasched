@@ -1,8 +1,9 @@
 import unittest
 from datetime import datetime
 
-from yasched.timing.Day import Day
 from yasched.timing.Time import Time
+
+from yasched.timing.Day import Day
 
 
 class TestTime(unittest.TestCase):

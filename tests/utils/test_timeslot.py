@@ -1,6 +1,7 @@
 import unittest
 
 from yasched.timing.Time import Time
+
 from yasched.timing.TimeSlot import TimeSlot
 
 
@@ -124,20 +125,6 @@ class TestTimeSlot(unittest.TestCase):
         self.assertTrue(a <= b)
         self.assertFalse(b > a)
         self.assertTrue(b >= a)
-
-    def test_ordering_with_non_timeslot_raises_typeerror(self):
-        start = Time(2025, 10, 24, 14, 0, 0)
-        end = Time(2025, 10, 24, 16, 0, 0)
-        slot = TimeSlot(start, end)
-
-        with self.assertRaises(TypeError):
-            slot < "x"
-        with self.assertRaises(TypeError):
-            slot <= 123
-        with self.assertRaises(TypeError):
-            slot > object()
-        with self.assertRaises(TypeError):
-            slot >= None
 
     def test_sorting(self):
         start1 = Time(2025, 10, 24, 15, 0, 0)

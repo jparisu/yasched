@@ -6,7 +6,6 @@ from yasched.yaml_utils.exceptions import YamlFormatError, YamlKeyError, YamlTyp
 from yasched.yaml_utils.timing_reader import (
     day_from_yaml,
     daytime_from_yaml,
-    periodic_from_yaml,
     time_from_yaml,
     timeslot_from_yaml,
 )
@@ -22,5 +21,4 @@ __all__ = [
     "time_from_yaml",
     "timeslot_from_yaml",
     "daytime_from_yaml",
-    "periodic_from_yaml",
 ]

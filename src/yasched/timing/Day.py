@@ -224,23 +224,24 @@ class Day:
             new_year = self.year + other.year
             new_month = self.month + other.month
             new_day = self.day + other.day
-            
+
             # Handle month overflow
             while new_month > 12:
                 new_month -= 12
                 new_year += 1
-            
+
             # Handle day overflow by creating a date and adding remaining days
             try:
                 result = Day(new_year, new_month, new_day)
             except ValueError:
                 # Day is too large for the month, adjust
                 import calendar
+
                 max_day = calendar.monthrange(new_year, new_month)[1]
                 overflow_days = new_day - max_day
                 result = Day(new_year, new_month, max_day)
                 result = result.add_days(overflow_days)
-            
+
             return result
         raise NotImplementedError(f"Cannot add Day and {type(other).__name__}")
 

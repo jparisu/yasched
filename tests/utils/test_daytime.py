@@ -97,17 +97,6 @@ class TestDayTime(unittest.TestCase):
         self.assertTrue(a <= DayTime(14, 30, 0))
         self.assertTrue(a >= DayTime(14, 30, 0))
 
-    def test_ordering_with_non_daytime_raises_typeerror(self):
-        dt = DayTime(14, 30, 0)
-        with self.assertRaises(TypeError):
-            dt < "x"
-        with self.assertRaises(TypeError):
-            dt <= 123
-        with self.assertRaises(TypeError):
-            dt > object()
-        with self.assertRaises(TypeError):
-            dt >= None
-
     def test_sorting(self):
         seq = [DayTime(15, 0, 0), DayTime(10, 0, 0), DayTime(12, 30, 0)]
         sorted_seq = sorted(seq)

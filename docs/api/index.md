@@ -16,17 +16,12 @@ The timing package provides classes for working with dates, times, and time slot
       show_root_heading: true
       show_source: true
 
-::: yasched.timing.Time
+::: yasched.timing.Moment
     options:
       show_root_heading: true
       show_source: true
 
 ::: yasched.timing.TimeSlot
-    options:
-      show_root_heading: true
-      show_source: true
-
-::: yasched.timing.Periodic
     options:
       show_root_heading: true
       show_source: true
@@ -63,11 +58,6 @@ The YAML utilities package provides flexible YAML parsing with support for alter
       show_source: true
 
 ::: yasched.yaml_utils.timeslot_from_yaml
-    options:
-      show_root_heading: true
-      show_source: true
-
-::: yasched.yaml_utils.periodic_from_yaml
     options:
       show_root_heading: true
       show_source: true

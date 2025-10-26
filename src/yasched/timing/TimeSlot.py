@@ -4,7 +4,7 @@ A Pythonic utility for working with time slots (start and end times).
 
 from __future__ import annotations
 
-from yasched.timing.Time import Time
+from yasched.timing.Moment import Moment
 
 
 class TimeSlot:
@@ -20,8 +20,8 @@ class TimeSlot:
     Memory footprint is minimized via `__slots__`.
 
     Example:
-        >>> start = Time(2025, 10, 24, 14, 0, 0)
-        >>> end = Time(2025, 10, 24, 16, 0, 0)
+        >>> start = Moment(2025, 10, 24, 14, 0, 0)
+        >>> end = Moment(2025, 10, 24, 16, 0, 0)
         >>> slot = TimeSlot(start, end)
         >>> str(slot)
         '2025-10-24 14:00:00 - 2025-10-24 16:00:00'
@@ -29,7 +29,7 @@ class TimeSlot:
 
     __slots__ = ("start", "end")
 
-    def __init__(self, start: Time, end: Time) -> None:
+    def __init__(self, start: Moment, end: Moment) -> None:
         """Initialize a `TimeSlot` from start and end times.
 
         Args:
@@ -37,10 +37,10 @@ class TimeSlot:
             end: The end time of the slot.
 
         Example:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> end = Time(2025, 10, 24, 16, 0, 0)
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end = Moment(2025, 10, 24, 16, 0, 0)
             >>> TimeSlot(start, end)
-            TimeSlot(Time(2025, 10, 24, 14, 0, 0), Time(2025, 10, 24, 16, 0, 0))
+            TimeSlot(Moment(2025, 10, 24, 14, 0, 0), Moment(2025, 10, 24, 16, 0, 0))
         """
         self.start = start
         self.end = end
@@ -48,19 +48,19 @@ class TimeSlot:
     # ---------- Alternate constructors ----------
 
     @classmethod
-    def from_duration(cls, start: Time, duration: Time) -> TimeSlot:
-        """Construct a `TimeSlot` from a start time and duration as a Time object.
+    def from_duration(cls, start: Moment, duration: Moment) -> TimeSlot:
+        """Construct a `TimeSlot` from a start time and duration as a Moment object.
 
         Args:
             start: The start time of the slot.
-            duration: Duration as a Time object.
+            duration: Duration as a Moment object.
 
         Returns:
             A `TimeSlot` with the calculated end time.
 
         Example:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> duration = Time(0, 0, 0, 2, 0, 0)  # 2 hours
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> duration = Moment(0, 0, 0, 2, 0, 0)  # 2 hours
             >>> slot = TimeSlot.from_duration(start, duration)
             >>> str(slot.end)
             '2025-10-24 16:00:00'
@@ -77,8 +77,8 @@ class TimeSlot:
             Duration in seconds.
 
         Example:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> end = Time(2025, 10, 24, 16, 0, 0)
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end = Moment(2025, 10, 24, 16, 0, 0)
             >>> TimeSlot(start, end).duration()
             7200
         """
@@ -91,8 +91,8 @@ class TimeSlot:
         """Return the string representation of the time slot.
 
         Example:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> end = Time(2025, 10, 24, 16, 0, 0)
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end = Moment(2025, 10, 24, 16, 0, 0)
             >>> str(TimeSlot(start, end))
             '2025-10-24 14:00:00 - 2025-10-24 16:00:00'
         """
@@ -102,10 +102,10 @@ class TimeSlot:
         """Return an unambiguous constructor-style representation.
 
         Example:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> end = Time(2025, 10, 24, 16, 0, 0)
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end = Moment(2025, 10, 24, 16, 0, 0)
             >>> repr(TimeSlot(start, end))
-            'TimeSlot(Time(2025, 10, 24, 14, 0, 0), Time(2025, 10, 24, 16, 0, 0))'
+            'TimeSlot(Moment(2025, 10, 24, 14, 0, 0), Moment(2025, 10, 24, 16, 0, 0))'
         """
         return f"TimeSlot({repr(self.start)}, {repr(self.end)})"
 
@@ -120,8 +120,8 @@ class TimeSlot:
             The formatted string representation of the time slot.
 
         Examples:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> end = Time(2025, 10, 24, 16, 0, 0)
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end = Moment(2025, 10, 24, 16, 0, 0)
             >>> TimeSlot(start, end).to_string()
             '2025-10-24 14:00:00 - 2025-10-24 16:00:00'
             >>> TimeSlot(start, end).to_string("%H:%M")
@@ -137,8 +137,8 @@ class TimeSlot:
         Non-`TimeSlot` objects compare as `False`.
 
         Example:
-            >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> end = Time(2025, 10, 24, 16, 0, 0)
+            >>> start = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end = Moment(2025, 10, 24, 16, 0, 0)
             >>> TimeSlot(start, end) == TimeSlot(start, end)
             True
         """
@@ -157,10 +157,10 @@ class TimeSlot:
             TypeError: If other is not a TimeSlot.
 
         Example:
-            >>> start1 = Time(2025, 10, 24, 14, 0, 0)
-            >>> end1 = Time(2025, 10, 24, 16, 0, 0)
-            >>> start2 = Time(2025, 10, 24, 15, 0, 0)
-            >>> end2 = Time(2025, 10, 24, 17, 0, 0)
+            >>> start1 = Moment(2025, 10, 24, 14, 0, 0)
+            >>> end1 = Moment(2025, 10, 24, 16, 0, 0)
+            >>> start2 = Moment(2025, 10, 24, 15, 0, 0)
+            >>> end2 = Moment(2025, 10, 24, 17, 0, 0)
             >>> TimeSlot(start1, end1) < TimeSlot(start2, end2)
             True
         """
@@ -170,7 +170,7 @@ class TimeSlot:
 
     def __le__(self, other: TimeSlot) -> bool:
         """Return `True` if `self` starts before or at the same time as `other`.
-        
+
         Raises:
             TypeError: If other is not a TimeSlot.
         """
@@ -180,7 +180,7 @@ class TimeSlot:
 
     def __gt__(self, other: TimeSlot) -> bool:
         """Return `True` if `self` starts after `other`.
-        
+
         Raises:
             TypeError: If other is not a TimeSlot.
         """
@@ -190,7 +190,7 @@ class TimeSlot:
 
     def __ge__(self, other: TimeSlot) -> bool:
         """Return `True` if `self` starts after or at the same time as `other`.
-        
+
         Raises:
             TypeError: If other is not a TimeSlot.
         """
