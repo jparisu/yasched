@@ -48,19 +48,20 @@ class TimeSlot:
     # ---------- Alternate constructors ----------
 
     @classmethod
-    def from_duration(cls, start: Time, duration: int) -> TimeSlot:
-        """Construct a `TimeSlot` from a start time and duration in seconds.
+    def from_duration(cls, start: Time, duration: Time) -> TimeSlot:
+        """Construct a `TimeSlot` from a start time and duration as a Time object.
 
         Args:
             start: The start time of the slot.
-            duration: Duration in seconds.
+            duration: Duration as a Time object.
 
         Returns:
             A `TimeSlot` with the calculated end time.
 
         Example:
             >>> start = Time(2025, 10, 24, 14, 0, 0)
-            >>> slot = TimeSlot.from_duration(start, 7200)  # 2 hours
+            >>> duration = Time(0, 0, 0, 2, 0, 0)  # 2 hours
+            >>> slot = TimeSlot.from_duration(start, duration)
             >>> str(slot.end)
             '2025-10-24 16:00:00'
         """
@@ -152,6 +153,9 @@ class TimeSlot:
         Returns:
             Whether `self` starts earlier than `other`.
 
+        Raises:
+            TypeError: If other is not a TimeSlot.
+
         Example:
             >>> start1 = Time(2025, 10, 24, 14, 0, 0)
             >>> end1 = Time(2025, 10, 24, 16, 0, 0)
@@ -161,23 +165,35 @@ class TimeSlot:
             True
         """
         if not isinstance(other, TimeSlot):
-            return NotImplemented
+            raise TypeError(f"'<' not supported between instances of 'TimeSlot' and '{type(other).__name__}'")
         return self.start < other.start
 
     def __le__(self, other: TimeSlot) -> bool:
-        """Return `True` if `self` starts before or at the same time as `other`."""
+        """Return `True` if `self` starts before or at the same time as `other`.
+        
+        Raises:
+            TypeError: If other is not a TimeSlot.
+        """
         if not isinstance(other, TimeSlot):
-            return NotImplemented
+            raise TypeError(f"'<=' not supported between instances of 'TimeSlot' and '{type(other).__name__}'")
         return self.start <= other.start
 
     def __gt__(self, other: TimeSlot) -> bool:
-        """Return `True` if `self` starts after `other`."""
+        """Return `True` if `self` starts after `other`.
+        
+        Raises:
+            TypeError: If other is not a TimeSlot.
+        """
         if not isinstance(other, TimeSlot):
-            return NotImplemented
+            raise TypeError(f"'>' not supported between instances of 'TimeSlot' and '{type(other).__name__}'")
         return self.start > other.start
 
     def __ge__(self, other: TimeSlot) -> bool:
-        """Return `True` if `self` starts after or at the same time as `other`."""
+        """Return `True` if `self` starts after or at the same time as `other`.
+        
+        Raises:
+            TypeError: If other is not a TimeSlot.
+        """
         if not isinstance(other, TimeSlot):
-            return NotImplemented
+            raise TypeError(f"'>=' not supported between instances of 'TimeSlot' and '{type(other).__name__}'")
         return self.start >= other.start

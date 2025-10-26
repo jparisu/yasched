@@ -195,23 +195,37 @@ class Time:
 
     # ---------- Arithmetic ----------
 
-    def __add__(self, other: int) -> Time:
-        """Add seconds to this Time.
+    def __add__(self, other: int | Time) -> Time:
+        """Add seconds or another Time to this Time.
 
         Args:
-            other: Number of seconds to add (may be negative).
+            other: Either an integer (number of seconds) or another Time.
+                   If Time, treats the other Time's components as a duration to add
+                   (years as days*365, months as days*30, days, hours, minutes, seconds).
 
         Returns:
             A new Time representing the sum.
 
-        Example:
+        Examples:
             >>> Time(2025, 10, 24, 14, 30, 0) + 3600
             Time(2025, 10, 24, 15, 30, 0)
+            >>> Time(2025, 1, 1, 10, 30, 45) + Time(1970, 1, 2, 5, 15, 30)
+            Time(2025, 1, 3, 15, 46, 15)
         """
         if isinstance(other, int):
             new_dt = self._datetime + timedelta(seconds=other)
             return Time.from_datetime(new_dt)
-        return NotImplemented
+        elif isinstance(other, Time):
+            # Convert the other Time to a duration in seconds
+            # Use the Day components to calculate days to add
+            days_to_add = (other.day.year - 1970) * 365 + (other.day.month - 1) * 30 + (other.day.day - 1)
+            total_seconds = (days_to_add * 86400 +
+                           other.hour * 3600 + 
+                           other.minute * 60 + 
+                           other.second)
+            
+            return self + total_seconds
+        raise NotImplementedError(f"Cannot add Time and {type(other).__name__}")
 
     # ---------- Comparison operators ----------
 

@@ -185,7 +185,27 @@ def timeslot_from_yaml(yaml_node: YamlReader) -> TimeSlot:
 
     # Method 2: From start and duration
     if yaml_node.has(TIMESLOT_DURATION_KEYS):
-        duration = yaml_node.get(TIMESLOT_DURATION_KEYS, force_type=[int])
-        return TimeSlot.from_duration(start, duration)
+        # Duration can be either an int (seconds) or a Time object (nested YAML)
+        try:
+            # Try to get as a nested Time object first
+            duration_node = yaml_node.get_child(TIMESLOT_DURATION_KEYS, throw=False)
+            if duration_node and duration_node._yaml and isinstance(duration_node._yaml, dict):
+                duration_time = time_from_yaml(duration_node)
+                return TimeSlot.from_duration(start, duration_time)
+        except (YamlFormatError, AttributeError):
+            pass
+        
+        # Otherwise, treat as seconds (backward compatibility)
+        duration_seconds = yaml_node.get(TIMESLOT_DURATION_KEYS, force_type=[int])
+        # Convert seconds to Time object using epoch + seconds
+        days = duration_seconds // 86400
+        remaining = duration_seconds % 86400
+        hours = remaining // 3600
+        remaining = remaining % 3600
+        minutes = remaining // 60
+        seconds = remaining % 60
+        # Use 1970-01-01 as epoch plus the calculated days
+        duration_time = Time(1970, 1, 1 + days, hours, minutes, seconds)
+        return TimeSlot.from_duration(start, duration_time)
 
     raise YamlFormatError("TimeSlot YAML must contain either 'end' or 'duration' field")

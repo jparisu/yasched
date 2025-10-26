@@ -147,7 +147,7 @@ class TestDay(unittest.TestCase):
         self.assertIsInstance(d.to_date(), date)
         self.assertEqual(d.to_date(), date(2025, 10, 24))
 
-    # ---------- New methods ----------
+    # ---------- String formatting ----------
 
     def test_to_string_default(self):
         d = Day(2025, 10, 24)
@@ -157,6 +157,8 @@ class TestDay(unittest.TestCase):
         d = Day(2025, 10, 24)
         self.assertEqual(d.to_string("%d/%m/%Y"), "24/10/2025")
         self.assertEqual(d.to_string("%B %d, %Y"), "October 24, 2025")
+
+    # ---------- Arithmetic with operator ----------
 
     def test_add_operator_int(self):
         d = Day(2025, 10, 24)
@@ -168,6 +170,27 @@ class TestDay(unittest.TestCase):
         d = Day(2025, 10, 24)
         d2 = d + (-7)
         self.assertEqual(str(d2), "2025-10-17")
+
+    def test_add_operator_day(self):
+        # Test adding Day objects (years, months, days)
+        d1 = Day(2020, 1, 1)
+        d2 = Day(1, 2, 3)
+        result = d1 + d2
+        self.assertEqual(result, Day(2021, 3, 4))
+
+    def test_add_operator_day_month_overflow(self):
+        # Test month overflow
+        d1 = Day(2020, 10, 15)
+        d2 = Day(0, 5, 0)  # Add 5 months
+        result = d1 + d2
+        self.assertEqual(result, Day(2021, 3, 15))
+
+    def test_add_operator_day_day_overflow(self):
+        # Test day overflow
+        d1 = Day(2020, 1, 30)
+        d2 = Day(0, 0, 5)  # Add 5 days
+        result = d1 + d2
+        self.assertEqual(result, Day(2020, 2, 4))
 
 
 if __name__ == "__main__":

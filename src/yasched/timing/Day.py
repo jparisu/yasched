@@ -201,22 +201,48 @@ class Day:
         """
         return Day.from_date(self._date + timedelta(days=n))
 
-    def __add__(self, other: int) -> Day:
-        """Add days to this Day.
+    def __add__(self, other: int | Day) -> Day:
+        """Add days or another Day to this Day.
 
         Args:
-            other: Number of days to add (may be negative).
+            other: Either an integer (number of days) or another Day.
+                   If Day, adds years, months, and days from the other Day.
 
         Returns:
             A new Day representing the sum.
 
-        Example:
+        Examples:
             >>> Day(2025, 10, 24) + 7
             Day(2025, 10, 31)
+            >>> Day(2020, 1, 1) + Day(1, 2, 3)
+            Day(2021, 3, 4)
         """
         if isinstance(other, int):
             return self.add_days(other)
-        return NotImplemented
+        elif isinstance(other, Day):
+            # Add years, months, and days from the other Day
+            new_year = self.year + other.year
+            new_month = self.month + other.month
+            new_day = self.day + other.day
+            
+            # Handle month overflow
+            while new_month > 12:
+                new_month -= 12
+                new_year += 1
+            
+            # Handle day overflow by creating a date and adding remaining days
+            try:
+                result = Day(new_year, new_month, new_day)
+            except ValueError:
+                # Day is too large for the month, adjust
+                import calendar
+                max_day = calendar.monthrange(new_year, new_month)[1]
+                overflow_days = new_day - max_day
+                result = Day(new_year, new_month, max_day)
+                result = result.add_days(overflow_days)
+            
+            return result
+        raise NotImplementedError(f"Cannot add Day and {type(other).__name__}")
 
     # ---------- Comparison operators ----------
 

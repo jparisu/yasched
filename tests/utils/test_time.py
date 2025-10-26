@@ -107,6 +107,21 @@ class TestTime(unittest.TestCase):
         t2 = t + (-7200)  # Subtract 2 hours
         self.assertEqual(str(t2), "2025-10-24 12:30:00")
 
+    def test_add_time_to_time(self):
+        # Test adding Time objects - other Time is interpreted as duration
+        t1 = Time(2025, 1, 1, 10, 30, 45)
+        # Time(1970, 1, 2, 5, 15, 30) = 1 day + 5 hours + 15 minutes + 30 seconds
+        t2 = Time(1970, 1, 2, 5, 15, 30)
+        result = t1 + t2
+        self.assertEqual(result, Time(2025, 1, 2, 15, 46, 15))
+
+    def test_add_time_simple(self):
+        t1 = Time(2025, 1, 1, 10, 0, 0)
+        # Time(1970, 1, 1, 2, 30, 0) = 0 days + 2 hours + 30 minutes
+        t2 = Time(1970, 1, 1, 2, 30, 0)
+        result = t1 + t2
+        self.assertEqual(result, Time(2025, 1, 1, 12, 30, 0))
+
     # ---------- Comparisons ----------
 
     def test_equality(self):

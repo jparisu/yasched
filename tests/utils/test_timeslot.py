@@ -20,13 +20,17 @@ class TestTimeSlot(unittest.TestCase):
 
     def test_from_duration(self):
         start = Time(2025, 10, 24, 14, 0, 0)
-        slot = TimeSlot.from_duration(start, 7200)  # 2 hours
+        # Duration: 2 hours (1970, 1, 1 = epoch day 1, so just time components)
+        duration = Time(1970, 1, 1, 2, 0, 0)
+        slot = TimeSlot.from_duration(start, duration)
         self.assertEqual(slot.start, start)
         self.assertEqual(str(slot.end), "2025-10-24 16:00:00")
 
     def test_from_duration_zero(self):
         start = Time(2025, 10, 24, 14, 0, 0)
-        slot = TimeSlot.from_duration(start, 0)
+        # Zero duration (epoch = 1970-01-01 00:00:00)
+        duration = Time(1970, 1, 1, 0, 0, 0)
+        slot = TimeSlot.from_duration(start, duration)
         self.assertEqual(slot.start, start)
         self.assertEqual(slot.end, start)
 
@@ -121,15 +125,19 @@ class TestTimeSlot(unittest.TestCase):
         self.assertFalse(b > a)
         self.assertTrue(b >= a)
 
-    def test_ordering_with_non_timeslot_returns_notimplemented(self):
+    def test_ordering_with_non_timeslot_raises_typeerror(self):
         start = Time(2025, 10, 24, 14, 0, 0)
         end = Time(2025, 10, 24, 16, 0, 0)
         slot = TimeSlot(start, end)
 
-        self.assertIs(TimeSlot.__lt__(slot, "x"), NotImplemented)
-        self.assertIs(TimeSlot.__le__(slot, 123), NotImplemented)
-        self.assertIs(TimeSlot.__gt__(slot, object()), NotImplemented)
-        self.assertIs(TimeSlot.__ge__(slot, None), NotImplemented)
+        with self.assertRaises(TypeError):
+            slot < "x"
+        with self.assertRaises(TypeError):
+            slot <= 123
+        with self.assertRaises(TypeError):
+            slot > object()
+        with self.assertRaises(TypeError):
+            slot >= None
 
     def test_sorting(self):
         start1 = Time(2025, 10, 24, 15, 0, 0)
