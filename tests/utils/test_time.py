@@ -178,6 +178,22 @@ class TestTime(unittest.TestCase):
         self.assertIsInstance(t.to_datetime(), datetime)
         self.assertEqual(t.to_datetime(), datetime(2025, 10, 24, 14, 30, 0))
 
+    def test_from_day_and_daytime(self):
+        from yasched.timing.Day import Day
+        from yasched.timing.DayTime import DayTime
+
+        day = Day(2025, 10, 24)
+        daytime = DayTime(14, 30, 0)
+        t = Time.from_day_and_daytime(day, daytime)
+        self.assertEqual(t, Time(2025, 10, 24, 14, 30, 0))
+
+    def test_daytime_property(self):
+        from yasched.timing.DayTime import DayTime
+
+        t = Time(2025, 10, 24, 14, 30, 0)
+        daytime = t.daytime
+        self.assertEqual(daytime, DayTime(14, 30, 0))
+
 
 if __name__ == "__main__":
     unittest.main()

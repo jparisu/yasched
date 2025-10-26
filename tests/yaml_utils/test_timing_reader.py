@@ -1,10 +1,18 @@
 import unittest
 
 from yasched.timing.Day import Day
+from yasched.timing.DayTime import DayTime
+from yasched.timing.Periodic import Periodic
 from yasched.timing.Time import Time
 from yasched.timing.TimeSlot import TimeSlot
 from yasched.yaml_utils.exceptions import YamlFormatError
-from yasched.yaml_utils.timing_reader import day_from_yaml, time_from_yaml, timeslot_from_yaml
+from yasched.yaml_utils.timing_reader import (
+    day_from_yaml,
+    daytime_from_yaml,
+    periodic_from_yaml,
+    time_from_yaml,
+    timeslot_from_yaml,
+)
 from yasched.yaml_utils.YamlReader import YamlReader
 
 
@@ -268,6 +276,171 @@ end:
 """
         with self.assertRaises(YamlFormatError):
             timeslot_from_yaml(YamlReader(yaml_str))
+
+
+class TestDayTimeFromYaml(unittest.TestCase):
+    # ---------- Construction from components ----------
+
+    def test_daytime_from_components(self):
+        yaml_str = """hour: 14
+minute: 30
+second: 0"""
+        daytime = daytime_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(daytime, DayTime(14, 30, 0))
+
+    def test_daytime_from_components_short_keys(self):
+        yaml_str = """h: 14
+min: 30
+s: 0"""
+        daytime = daytime_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(daytime, DayTime(14, 30, 0))
+
+    def test_daytime_from_components_defaults(self):
+        yaml_str = """hour: 14"""
+        daytime = daytime_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(daytime, DayTime(14, 0, 0))
+
+    # ---------- Construction from string ----------
+
+    def test_daytime_from_string_default_format(self):
+        yaml_str = """time: '14:30:00'"""
+        daytime = daytime_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(daytime, DayTime(14, 30, 0))
+
+    def test_daytime_from_string_custom_format(self):
+        yaml_str = """time: '2:30 PM'
+format: '%I:%M %p'"""
+        daytime = daytime_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(daytime, DayTime(14, 30, 0))
+
+    # ---------- Error cases ----------
+
+    def test_daytime_invalid_string_format_raises(self):
+        yaml_str = """time: 'not-a-time'"""
+        with self.assertRaises(YamlFormatError):
+            daytime_from_yaml(YamlReader(yaml_str))
+
+
+class TestTimeFromYamlWithDayTime(unittest.TestCase):
+    # ---------- Construction from Day and DayTime ----------
+
+    def test_time_from_day_and_daytime(self):
+        yaml_str = """
+date:
+  year: 2025
+  month: 10
+  day: 24
+daytime:
+  hour: 14
+  minute: 30
+  second: 0
+"""
+        time = time_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(time, Time(2025, 10, 24, 14, 30, 0))
+
+    def test_time_from_day_and_daytime_with_strings(self):
+        yaml_str = """
+date:
+  date: '2025-10-24'
+daytime:
+  time: '14:30:00'
+"""
+        time = time_from_yaml(YamlReader(yaml_str))
+        self.assertEqual(time, Time(2025, 10, 24, 14, 30, 0))
+
+
+class TestPeriodicFromYaml(unittest.TestCase):
+    # ---------- Construction from daily interval ----------
+
+    def test_periodic_from_daily(self):
+        yaml_str = """
+start:
+  start:
+    datetime: '2025-01-01 09:00:00'
+  end:
+    datetime: '2025-01-01 10:00:00'
+end:
+  start:
+    datetime: '2025-01-05 09:00:00'
+  end:
+    datetime: '2025-01-05 10:00:00'
+daily: 1
+"""
+        periodic = periodic_from_yaml(YamlReader(yaml_str))
+        self.assertIsInstance(periodic, Periodic)
+        self.assertEqual(periodic.count_occurrences(), 5)
+
+    # ---------- Construction from weekly interval ----------
+
+    def test_periodic_from_weekly(self):
+        yaml_str = """
+start:
+  start:
+    datetime: '2025-01-01 09:00:00'
+  end:
+    datetime: '2025-01-01 10:00:00'
+end:
+  start:
+    datetime: '2025-01-15 09:00:00'
+  end:
+    datetime: '2025-01-15 10:00:00'
+weekly: 1
+"""
+        periodic = periodic_from_yaml(YamlReader(yaml_str))
+        self.assertIsInstance(periodic, Periodic)
+
+    # ---------- Construction from count ----------
+
+    def test_periodic_from_count(self):
+        yaml_str = """
+start:
+  start:
+    datetime: '2025-01-01 09:00:00'
+  end:
+    datetime: '2025-01-01 10:00:00'
+interval:
+  datetime: '1970-01-02 00:00:00'
+count: 10
+"""
+        periodic = periodic_from_yaml(YamlReader(yaml_str))
+        self.assertIsInstance(periodic, Periodic)
+        self.assertEqual(periodic.count_occurrences(), 10)
+
+    # ---------- Construction from repetitions list ----------
+
+    def test_periodic_from_repetitions(self):
+        yaml_str = """
+start:
+  start:
+    datetime: '2025-01-01 09:00:00'
+  end:
+    datetime: '2025-01-01 10:00:00'
+end:
+  start:
+    datetime: '2025-01-10 09:00:00'
+  end:
+    datetime: '2025-01-10 10:00:00'
+repetitions:
+  - datetime: '1970-01-03 00:00:00'
+"""
+        periodic = periodic_from_yaml(YamlReader(yaml_str))
+        self.assertIsInstance(periodic, Periodic)
+        # Every 2 days from Jan 1 to Jan 10 should give us 5 occurrences
+        self.assertEqual(periodic.count_occurrences(), 5)
+
+    # ---------- Error cases ----------
+
+    def test_periodic_missing_start_raises(self):
+        yaml_str = """
+end:
+  start:
+    datetime: '2025-01-31 09:00:00'
+  end:
+    datetime: '2025-01-31 10:00:00'
+daily: 1
+"""
+        with self.assertRaises(YamlFormatError):
+            periodic_from_yaml(YamlReader(yaml_str))
 
 
 if __name__ == "__main__":

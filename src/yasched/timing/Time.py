@@ -113,6 +113,24 @@ class Time:
         """
         return cls(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 
+    @classmethod
+    def from_day_and_daytime(cls, day: Day, daytime: DayTime) -> Time:
+        """Construct a `Time` from a Day and DayTime.
+
+        Args:
+            day: A Day instance.
+            daytime: A DayTime instance.
+
+        Returns:
+            A `Time` combining the date from Day and time from DayTime.
+
+        Example:
+            >>> from yasched.timing.DayTime import DayTime
+            >>> Time.from_day_and_daytime(Day(2025, 10, 24), DayTime(14, 30, 0))
+            Time(2025, 10, 24, 14, 30, 0)
+        """
+        return cls(day.year, day.month, day.day, daytime.hour, daytime.minute, daytime.second)
+
     # ---------- Representation ----------
 
     def __str__(self) -> str:
@@ -162,6 +180,19 @@ class Time:
             Day(2025, 10, 24)
         """
         return Day(self._datetime.year, self._datetime.month, self._datetime.day)
+
+    @property
+    def daytime(self) -> DayTime:
+        """The DayTime component.
+
+        Example:
+            >>> from yasched.timing.DayTime import DayTime
+            >>> Time(2025, 10, 24, 14, 30, 0).daytime
+            DayTime(14, 30, 0)
+        """
+        from yasched.timing.DayTime import DayTime
+
+        return DayTime(self._datetime.hour, self._datetime.minute, self._datetime.second)
 
     @property
     def hour(self) -> int:
