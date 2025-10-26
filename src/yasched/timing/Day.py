@@ -201,12 +201,11 @@ class Day:
         """
         return Day.from_date(self._date + timedelta(days=n))
 
-    def __add__(self, other: int | Day) -> Day:
+    def __add__(self, other: int) -> Day:
         """Add days to this Day.
 
         Args:
-            other: Either an integer (number of days) or another Day.
-                   If Day, adds the number of days from epoch (not typical use).
+            other: Number of days to add (may be negative).
 
         Returns:
             A new Day representing the sum.
@@ -217,10 +216,6 @@ class Day:
         """
         if isinstance(other, int):
             return self.add_days(other)
-        elif isinstance(other, Day):
-            # Add the days from epoch - this allows Day arithmetic
-            delta = (self._date - date(1970, 1, 1)).days + (other._date - date(1970, 1, 1)).days
-            return Day.from_date(date(1970, 1, 1) + timedelta(days=delta))
         return NotImplemented
 
     # ---------- Comparison operators ----------

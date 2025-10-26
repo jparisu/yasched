@@ -102,11 +102,10 @@ class TestTime(unittest.TestCase):
         t2 = t + 3600  # Add 1 hour, should go to next day
         self.assertEqual(str(t2), "2025-10-25 00:30:00")
 
-    def test_add_time_to_time(self):
-        t1 = Time(2025, 1, 1, 0, 0, 1)
-        t2 = Time(2025, 1, 1, 0, 0, 2)
-        result = t1 + t2
-        self.assertIsInstance(result, Time)
+    def test_add_negative_seconds(self):
+        t = Time(2025, 10, 24, 14, 30, 0)
+        t2 = t + (-7200)  # Subtract 2 hours
+        self.assertEqual(str(t2), "2025-10-24 12:30:00")
 
     # ---------- Comparisons ----------
 

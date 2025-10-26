@@ -195,12 +195,11 @@ class Time:
 
     # ---------- Arithmetic ----------
 
-    def __add__(self, other: int | Time) -> Time:
-        """Add seconds to this Time, or add two Times.
+    def __add__(self, other: int) -> Time:
+        """Add seconds to this Time.
 
         Args:
-            other: Either an integer (number of seconds) or another Time.
-                   If Time, adds the total seconds from both.
+            other: Number of seconds to add (may be negative).
 
         Returns:
             A new Time representing the sum.
@@ -211,11 +210,6 @@ class Time:
         """
         if isinstance(other, int):
             new_dt = self._datetime + timedelta(seconds=other)
-            return Time.from_datetime(new_dt)
-        elif isinstance(other, Time):
-            # Add the total seconds from both times
-            total_seconds = int(self._datetime.timestamp()) + int(other._datetime.timestamp())
-            new_dt = datetime.fromtimestamp(total_seconds)
             return Time.from_datetime(new_dt)
         return NotImplemented
 

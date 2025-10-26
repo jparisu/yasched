@@ -164,12 +164,10 @@ class TestDay(unittest.TestCase):
         self.assertEqual(str(d2), "2025-10-31")
         self.assertIsNot(d, d2)
 
-    def test_add_operator_day(self):
-        d1 = Day(2025, 10, 24)
-        d2 = Day(1970, 1, 2)  # 1 day from epoch
-        result = d1 + d2
-        # This should add the days from epoch
-        self.assertIsInstance(result, Day)
+    def test_add_operator_negative(self):
+        d = Day(2025, 10, 24)
+        d2 = d + (-7)
+        self.assertEqual(str(d2), "2025-10-17")
 
 
 if __name__ == "__main__":
