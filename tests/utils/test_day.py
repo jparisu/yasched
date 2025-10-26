@@ -147,6 +147,30 @@ class TestDay(unittest.TestCase):
         self.assertIsInstance(d.to_date(), date)
         self.assertEqual(d.to_date(), date(2025, 10, 24))
 
+    # ---------- New methods ----------
+
+    def test_to_string_default(self):
+        d = Day(2025, 10, 24)
+        self.assertEqual(d.to_string(), "2025-10-24")
+
+    def test_to_string_custom_format(self):
+        d = Day(2025, 10, 24)
+        self.assertEqual(d.to_string("%d/%m/%Y"), "24/10/2025")
+        self.assertEqual(d.to_string("%B %d, %Y"), "October 24, 2025")
+
+    def test_add_operator_int(self):
+        d = Day(2025, 10, 24)
+        d2 = d + 7
+        self.assertEqual(str(d2), "2025-10-31")
+        self.assertIsNot(d, d2)
+
+    def test_add_operator_day(self):
+        d1 = Day(2025, 10, 24)
+        d2 = Day(1970, 1, 2)  # 1 day from epoch
+        result = d1 + d2
+        # This should add the days from epoch
+        self.assertIsInstance(result, Day)
+
 
 if __name__ == "__main__":
     unittest.main()

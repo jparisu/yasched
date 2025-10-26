@@ -132,6 +132,24 @@ class Day:
         """
         return f"Day({self.year}, {self.month}, {self.day})"
 
+    def to_string(self, fmt: str = "%Y-%m-%d") -> str:
+        """Format the day as a string using the specified format.
+
+        Args:
+            fmt: A `datetime.strftime`-compatible format string.
+                 Defaults to ISO date "%Y-%m-%d".
+
+        Returns:
+            The formatted string representation of the day.
+
+        Examples:
+            >>> Day(2025, 10, 24).to_string()
+            '2025-10-24'
+            >>> Day(2025, 10, 24).to_string("%d/%m/%Y")
+            '24/10/2025'
+        """
+        return self._date.strftime(fmt)
+
     # ---------- Accessors ----------
 
     @property
@@ -182,6 +200,28 @@ class Day:
             Day(2025, 10, 31)
         """
         return Day.from_date(self._date + timedelta(days=n))
+
+    def __add__(self, other: int | Day) -> Day:
+        """Add days to this Day.
+
+        Args:
+            other: Either an integer (number of days) or another Day.
+                   If Day, adds the number of days from epoch (not typical use).
+
+        Returns:
+            A new Day representing the sum.
+
+        Example:
+            >>> Day(2025, 10, 24) + 7
+            Day(2025, 10, 31)
+        """
+        if isinstance(other, int):
+            return self.add_days(other)
+        elif isinstance(other, Day):
+            # Add the days from epoch - this allows Day arithmetic
+            delta = (self._date - date(1970, 1, 1)).days + (other._date - date(1970, 1, 1)).days
+            return Day.from_date(date(1970, 1, 1) + timedelta(days=delta))
+        return NotImplemented
 
     # ---------- Comparison operators ----------
 
