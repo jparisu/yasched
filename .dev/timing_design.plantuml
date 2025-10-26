@@ -1,0 +1,95 @@
+@startuml
+
+struct Day {
+    + year: int
+    + month: int
+    + day: int
+    ---
+    + __init__(year: int, month: int, day: int): Day
+    + today(): Day
+    + from_string(d: str, format: str): Day
+    + from_date(d: date): Day
+    + __add__(d1: Day, d2: Day): Day
+    ---
+    + to_date(): date
+    ---
+    + to_string(format: str): str
+    + __str__(): str
+    + __repr__(): str
+    ---
+    + __eq__(Day): bool
+    + __lt__(Day): bool
+    + __le__(Day): bool
+    + __gt__(Day): bool
+    + __ge__(Day): bool
+}
+
+struct Time {
+    + day: Day
+    + hour: int
+    + minute: int
+    + second: int
+    ---
+    + __init__(year: int, month: int, day: int, hour: int, minute: int, second: int): Time
+    + now(): Time
+    + from_string(str): Time
+    + from_datetime(datetime): Time
+    + __add__(t1: Time, t2: Time): Time
+    ---
+    + to_datetime(): datetime
+    ---
+    + to_string(format: str): str
+    + __str__(): str
+    + __repr__(): str
+    ---
+    + __eq__(Time): bool
+    + __lt__(Time): bool
+    + __le__(Time): bool
+    + __gt__(Time): bool
+    + __ge__(Time): bool
+}
+
+struct TimeSlot {
+    + start: Time
+    + end: Time
+    ---
+    + __init__(start: Time, end: Time): TimeSlot
+    + from_duration(start: Time, duration: Time): TimeSlot
+    ---
+    + duration(): Time
+    ---
+    + to_string(format: str): str
+    + __str__(): str
+    + __repr__(): str
+    ---
+    + __eq__(TimeSlot): bool
+    + __lt__(TimeSlot): bool
+    + __le__(TimeSlot): bool
+    + __gt__(TimeSlot): bool
+    + __ge__(TimeSlot): bool
+}
+
+TimeSlot *-- "2" Time
+Time *-- "1" Day
+
+class "YamlKey" {
+    + keys: set[str]
+}
+
+class "YamlReader" {
+    # _yaml: any
+    + __init__(yaml_content: str): YamlReader
+    + yaml(any): YamlReader
+    + has(key: YamlKey): bool
+    + get(key: YamlKey, default: any = None, force_type: [type] = [Any], throw: bool = True): any
+    + get_child(key: YamlKey, default: any = None, throw: bool = True): YamlReader
+    + dump(): str
+}
+
+class "YamlReader-timing" {
+    + day_from_yaml(yaml_node: YamlReader): Day
+    + time_from_yaml(yaml_node: YamlReader): Time
+    + timeslot_from_yaml(yaml_node: YamlReader): TimeSlot
+}
+
+@enduml

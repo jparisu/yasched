@@ -24,7 +24,9 @@ repos:
     rev: v1.18.2
     hooks:
       - id: mypy
-        additional_dependencies: [types-setuptools]
+        additional_dependencies:
+        - types-setuptools
+        - types-PyYAML
         args: [--ignore-missing-imports]
         exclude: ^tests/
 
