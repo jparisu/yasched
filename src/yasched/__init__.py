@@ -1,14 +1,5 @@
-"""
-yasched - Scheduler for agenda and tasks orchestration via YAML.
+"""Top-level package for My Yaml Scheduler."""
 
-This package provides a simple API for scheduling and managing tasks
-defined in YAML configuration files.
-"""
+from yasched._version import __version__
 
-__version__ = "0.1.0"
-
-import logging
-
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-
-__all__ = ["utils"]
+__all__ = ["__version__"]
