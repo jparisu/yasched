@@ -48,9 +48,7 @@ class GenericRegistry(Generic[T]):
         self._canonical[key] = value
         self._canonical_to_aliases.setdefault(key, set())
 
-    def register_alias(
-        self, canonical_key: str, alias: str, on_duplicate: str = "raise"
-    ) -> None:
+    def register_alias(self, canonical_key: str, alias: str, on_duplicate: str = "raise") -> None:
         self._validate_on_duplicate(on_duplicate)
         if canonical_key not in self._canonical:
             raise KeyError(f"Canonical key {canonical_key!r} does not exist")

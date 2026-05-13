@@ -171,9 +171,7 @@ class ColorRegistry(GenericRegistry[Color]):
         for name, hex_val in _CSS_COLORS.items():
             self.register(name, Color.from_hex(hex_val), on_duplicate="ignore")
 
-    def register_color(
-        self, name: str, color: Color, on_duplicate: str = "raise"
-    ) -> None:
+    def register_color(self, name: str, color: Color, on_duplicate: str = "raise") -> None:
         self.register(name, color, on_duplicate=on_duplicate)
 
     @overload

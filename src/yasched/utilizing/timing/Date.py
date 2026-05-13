@@ -8,11 +8,11 @@ from dataclasses import dataclass
 from yasched.utilizing.timing.Duration import Duration
 
 _FORMATS = [
-    "%Y-%m-%d",       # ISO 8601 — canonical
-    "%d/%m/%Y",       # DD/MM/YYYY  (tried before MM/DD for ambiguous inputs)
-    "%m/%d/%Y",       # MM/DD/YYYY
-    "%B %d, %Y",      # January 15, 2026
-    "%b %d %Y",       # Jan 15 2026
+    "%Y-%m-%d",  # ISO 8601 — canonical
+    "%d/%m/%Y",  # DD/MM/YYYY  (tried before MM/DD for ambiguous inputs)
+    "%m/%d/%Y",  # MM/DD/YYYY
+    "%B %d, %Y",  # January 15, 2026
+    "%b %d %Y",  # Jan 15 2026
 ]
 
 

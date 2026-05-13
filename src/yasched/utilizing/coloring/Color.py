@@ -17,9 +17,7 @@ class Color:
     def __post_init__(self) -> None:
         for name, val in (("r", self.r), ("g", self.g), ("b", self.b), ("a", self.a)):
             if not (0.0 <= val <= 1.0):
-                raise ValueError(
-                    f"Color channel '{name}' must be in [0.0, 1.0], got {val!r}"
-                )
+                raise ValueError(f"Color channel '{name}' must be in [0.0, 1.0], got {val!r}")
 
     @staticmethod
     def from_name(name: str) -> Color:
@@ -38,29 +36,23 @@ class Color:
             r = int(s[0:2], 16) / 255.0
             g = int(s[2:4], 16) / 255.0
             b = int(s[4:6], 16) / 255.0
-        except ValueError:
-            raise ValueError(f"Invalid hex color: {hex_str!r}")
+        except ValueError as err:
+            raise ValueError(f"Invalid hex color: {hex_str!r}") from err
         return Color(r=r, g=g, b=b)
 
     @staticmethod
-    def from_rgb(
-        r: int | float, g: int | float, b: int | float, a: int | float = 1.0
-    ) -> Color:
+    def from_rgb(r: int | float, g: int | float, b: int | float, a: int | float = 1.0) -> Color:
         def _norm(val: int | float, name: str) -> float:
             if isinstance(val, int):
                 if not (0 <= val <= 255):
-                    raise ValueError(
-                        f"Integer channel '{name}' must be in [0, 255], got {val!r}"
-                    )
+                    raise ValueError(f"Integer channel '{name}' must be in [0, 255], got {val!r}")
                 return val / 255.0
             return float(val)
 
         return Color(r=_norm(r, "r"), g=_norm(g, "g"), b=_norm(b, "b"), a=float(a))
 
     def to_hex(self) -> str:
-        return "#{:02x}{:02x}{:02x}".format(
-            round(self.r * 255), round(self.g * 255), round(self.b * 255)
-        )
+        return f"#{round(self.r * 255):02x}{round(self.g * 255):02x}{round(self.b * 255):02x}"
 
     def to_rgba_tuple(self) -> tuple[float, float, float, float]:
         return (self.r, self.g, self.b, self.a)

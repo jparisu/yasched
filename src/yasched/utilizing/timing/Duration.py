@@ -27,7 +27,9 @@ class Duration:
         days = int(m.group(2) or 0)
         hours = int(m.group(3) or 0)
         minutes = int(m.group(4) or 0)
-        return Duration(value=datetime.timedelta(weeks=weeks, days=days, hours=hours, minutes=minutes))
+        return Duration(
+            value=datetime.timedelta(weeks=weeks, days=days, hours=hours, minutes=minutes)
+        )
 
     @staticmethod
     def zero() -> Duration:
