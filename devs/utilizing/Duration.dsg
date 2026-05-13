@@ -1,0 +1,66 @@
+# Duration
+
+**File:** `src/yasched/utilizing/Duration.py`
+
+A span of time. Wraps `datetime.timedelta` internally. Parsed from
+human-readable strings (e.g. `"1h30m"`, `"3d"`); always serializes back to
+the same compact format.
+
+Used for event durations, task effort estimates, and temporal arithmetic with
+`Date` and `Time`.
+
+---
+
+## YAML forms accepted
+
+```yaml
+duration: 30m       # 30 minutes
+duration: 1h        # 1 hour
+duration: 2h30m     # 2 hours 30 minutes
+duration: 3d        # 3 days (= 72 h, calendar-blind)
+duration: 1w        # 1 week (= 7 d = 168 h, calendar-blind)
+duration: 1w2d3h4m  # combined, units must appear in descending order
+```
+
+---
+
+## Fields
+
+| Field   | Type                 | Description                       |
+|---------|----------------------|-----------------------------------|
+| `value` | `datetime.timedelta` | Canonical internal representation |
+
+---
+
+## Interface
+
+```
+Duration
+  + value: datetime.timedelta
+  --
+  + {static} from_string(s: str) -> Duration
+  + {static} zero() -> Duration
+  + to_minutes() -> int
+  + to_hours() -> float
+  + to_days() -> float
+  + __str__() -> str                    # compact: "1h30m", "3d", "2h"
+  + __add__(other: Duration) -> Duration
+  + __sub__(other: Duration) -> Duration
+  + __mul__(factor: int) -> Duration
+  + __lt__(other: Duration) -> bool
+  + __eq__(other: Duration) -> bool
+  + __bool__() -> bool                  # False only for zero duration
+```
+
+---
+
+## Notes
+
+- Frozen dataclass.
+- `from_string` accepts units `w`, `d`, `h`, `m` in descending order only.
+  Units out of order or unknown units raise `ValueError`.
+- `d` and `w` are calendar-blind: `1d` always means 24 hours, regardless of
+  daylight saving or weekends. Calendar-aware scheduling belongs in `backending`.
+- `__str__` omits zero-value units and normalizes upward (e.g. 120 minutes
+  renders as `"2h"`, not `"120m"`).
+- `__sub__` raises `ValueError` if the result would be negative.

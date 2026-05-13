@@ -5,5 +5,3 @@ import yasched
 
 print(yasched.__version__)
 ```
-
-

@@ -1,0 +1,7 @@
+# Sample yasched configuration file
+# This demonstrates a basic task configuration divided in multiple files for better organization
+
+layouts: "./basic_example_layouts.yaml"
+topics:  "./basic_example_topics.yaml"
+tasks:   "./basic_example_tasks.yaml"
+events:  "./basic_example_events.yaml"

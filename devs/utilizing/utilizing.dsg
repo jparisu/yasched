@@ -1,0 +1,49 @@
+# Utilizing Module
+
+The `utilizing` module provides generic, domain-agnostic value types and helpers
+shared across the entire library. Nothing in this module should import from
+`coring`, `backending`, or `frontending`.
+
+Class diagram: [utilizing.puml](utilizing.puml)
+
+---
+
+## File map
+
+```
+src/yasched/utilizing/
+  GenericSingleton.py      # singleton mixin base class
+  GenericRegistry.py       # generic string-keyed registry
+  Color.py                 # immutable RGBA color value
+  ColorRegistry.py         # named-color registry (plain class)
+  SingletonColorRegistry.py # singleton wrapper around ColorRegistry
+  Date.py                  # calendar date with flexible parsing
+  Time.py                  # time-of-day with flexible parsing
+  Duration.py              # time duration with flexible parsing
+```
+
+---
+
+## Classes
+
+| Class                    | Design doc                                               | Purpose                                        |
+|--------------------------|----------------------------------------------------------|------------------------------------------------|
+| `GenericSingleton`       | [GenericSingleton.dsg](GenericSingleton.dsg)             | Mixin that enforces a single instance          |
+| `GenericRegistry`        | [GenericRegistry.dsg](GenericRegistry.dsg)               | String-keyed registry with alias support       |
+| `Color`                  | [Color.dsg](Color.dsg)                                   | Immutable RGBA color value                     |
+| `ColorRegistry`          | [ColorRegistry.dsg](ColorRegistry.dsg)                   | Registry of named colors (plain class)         |
+| `SingletonColorRegistry` | [SingletonColorRegistry.dsg](SingletonColorRegistry.dsg) | Process-wide singleton color registry          |
+| `Date`                   | [Date.dsg](Date.dsg)                                     | Calendar date with multi-format parsing        |
+| `Time`                   | [Time.dsg](Time.dsg)                                     | Time-of-day with multi-format parsing          |
+| `Duration`               | [Duration.dsg](Duration.dsg)                             | Time span with human-readable parsing          |
+
+---
+
+## Design rules for this module
+
+- All classes are immutable value objects (frozen dataclasses) unless stated otherwise.
+- Parsing always validates and raises `ValueError` on bad input.
+- Each class stores its value in exactly one canonical internal representation.
+- `Date`, `Time`, and `Duration` wrap their corresponding `datetime` stdlib types
+  (`datetime.date`, `datetime.time`, `datetime.timedelta`) rather than reimplementing
+  time arithmetic.

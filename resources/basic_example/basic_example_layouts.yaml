@@ -1,0 +1,22 @@
+# Sample yasched configuration file
+# This demonstrates various layouts configurations
+
+- id: my_layout
+  background:
+    - type: gradient  # This specifies that the background should be a gradient
+    - colors:  # This is a list of colors that define the gradient
+        - lightgreen
+        - white
+  border:
+    - type: solid
+    - width: 2px
+    - color: darkgreen
+
+- id: important
+  background:
+    - color:  # A color could be defined as a name, hex code, RGB, several values, etc.
+      - red
+      - alpha: 0.5
+  icon:
+    - type: emoji
+    - value: "⚠️"
