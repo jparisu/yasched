@@ -1,0 +1,51 @@
+# YearlySchedule
+
+**File:** `src/yasched/coring/YearlySchedule.py`
+
+A schedule that repeats once per year on a fixed month and day (e.g. an annual
+birthday or anniversary).
+
+Inherits from `Schedule`.
+
+---
+
+## YAML form accepted
+
+```yaml
+schedule:
+  type: yearly
+  month: 12
+  day: 25
+```
+
+---
+
+## Fields
+
+| Field   | Type  | Required | Description                            |
+|---------|-------|----------|----------------------------------------|
+| `month` | `int` | yes      | Month of the year; must be 1–12        |
+| `day`   | `int` | yes      | Day of the month; must be 1–31         |
+
+---
+
+## Interface
+
+```
+YearlySchedule(Schedule)
+  + month: int
+  + day: int
+```
+
+---
+
+## Notes
+
+- Frozen dataclass.
+- `__post_init__` raises `ValueError` if `month` is outside 1–12 or `day` is
+  outside 1–31.
+- Day-in-month validity (e.g. February 30) is not enforced at construction;
+  `backending` handles calendar-specific validation and occurrence generation.
+- No `start_date`/`end_date` range fields — a yearly schedule is assumed to
+  recur indefinitely. If a finite range is needed, wrap it with date-filtering
+  logic in `backending`.

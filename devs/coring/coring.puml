@@ -41,7 +41,7 @@ package coring {
   BorderStyle --> Color
 
   ' ── Schedule ────────────────────────────────────────────────
-  abstract class Schedule
+  class Schedule
 
   class WeeklyAppointment {
     + week_day: Weekday

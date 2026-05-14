@@ -12,6 +12,32 @@ Imports allowed: `utilizing` only.
 
 ---
 
+## Classes
+
+| Class                | Design doc                                           | Purpose                                          |
+|----------------------|------------------------------------------------------|--------------------------------------------------|
+| `Weekday`            | [_shared.dsg](_shared.dsg)                           | Enum of days of the week                         |
+| `WeeklyAppointment`  | [_shared.dsg](_shared.dsg)                           | One time slot in a weekly schedule               |
+| `TaskStatus`         | [_shared.dsg](_shared.dsg)                           | Enum of task lifecycle states                    |
+| `EffortRange`        | [_shared.dsg](_shared.dsg)                           | Estimated effort bounds (min/max Duration)       |
+| `EventLink`          | [_shared.dsg](_shared.dsg)                           | Reference from a task to a related event         |
+| `BlockedBy`          | [_shared.dsg](_shared.dsg)                           | Dependency declaration between tasks             |
+| `BackgroundStyle`    | [Layout.dsg](Layout.dsg)                             | Background fill style (solid or gradient)        |
+| `BorderStyle`        | [Layout.dsg](Layout.dsg)                             | Border style                                     |
+| `IconStyle`          | [Layout.dsg](Layout.dsg)                             | Icon decoration style (emoji or image)           |
+| `Layout`             | [Layout.dsg](Layout.dsg)                             | Visual style container for topics/events/tasks   |
+| `Schedule`           | [Schedule.dsg](Schedule.dsg)                         | Shared base for all schedule types               |
+| `WeeklySchedule`     | [WeeklySchedule.dsg](WeeklySchedule.dsg)             | Repeats on specified days of the week            |
+| `MonthlySchedule`    | [MonthlySchedule.dsg](MonthlySchedule.dsg)           | Repeats on a fixed day of the month              |
+| `YearlySchedule`     | [YearlySchedule.dsg](YearlySchedule.dsg)             | Repeats once per year on a fixed month/day       |
+| `SingleDaySchedule`  | [SingleDaySchedule.dsg](SingleDaySchedule.dsg)       | One-off occurrence on a specific date            |
+| `MultiDaySchedule`   | [MultiDaySchedule.dsg](MultiDaySchedule.dsg)         | One-off occurrence spanning multiple days        |
+| `Topic`              | [Topic.dsg](Topic.dsg)                               | Organizational category forming a DAG            |
+| `Event`              | [Event.dsg](Event.dsg)                               | Time-bound occurrence belonging to a topic       |
+| `Task`               | [Task.dsg](Task.dsg)                                 | Unit of work with optional deadline/recurrence   |
+
+---
+
 ## File map
 
 ```
@@ -159,19 +185,19 @@ The `layout` field on `Topic`, `Event`, and `Task` is typed as `Layout | str`:
 
 ## Schedule hierarchy
 
-**Files:** `src/yasched/coring/Schedule.py` (abstract base) + one file per subclass.
+**Files:** `src/yasched/coring/Schedule.py` (shared base) + one file per subclass.
 
 Used by both `Event.schedules` and `Task.schedules` (recurring tasks).
 All schedules are stored as a `list[Schedule]` — single-schedule entities use
 a one-element list.
 
-### Schedule (abstract base)
+### Schedule (shared base)
 
 ```
-Schedule [abstract]
+Schedule
 ```
 
-No shared fields; the abstract class only provides the common type.
+No shared fields; the base class only provides the common type.
 
 ### WeeklySchedule
 
