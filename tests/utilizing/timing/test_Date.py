@@ -7,7 +7,6 @@ import pytest
 from yasched.utilizing.timing.Date import Date
 from yasched.utilizing.timing.Duration import Duration
 
-
 # ---------------------------------------------------------------------------
 # from_string — sweet path
 # ---------------------------------------------------------------------------

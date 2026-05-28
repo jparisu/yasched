@@ -7,7 +7,6 @@ import pytest
 from yasched.coring.MonthlySchedule import MonthlySchedule
 from yasched.utilizing.timing.Duration import Duration
 
-
 # ---------------------------------------------------------------------------
 # Construction — sweet path
 # ---------------------------------------------------------------------------

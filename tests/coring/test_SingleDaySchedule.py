@@ -7,7 +7,6 @@ import pytest
 from yasched.coring.SingleDaySchedule import SingleDaySchedule
 from yasched.utilizing.timing.Duration import Duration
 
-
 # ---------------------------------------------------------------------------
 # Construction — sweet path
 # ---------------------------------------------------------------------------

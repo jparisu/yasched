@@ -4,8 +4,8 @@ import datetime
 
 import pytest
 
-from yasched.coring.WeeklySchedule import WeeklySchedule
 from yasched.coring._shared import Weekday, WeeklyAppointment
+from yasched.coring.WeeklySchedule import WeeklySchedule
 from yasched.utilizing.timing.Duration import Duration
 
 

@@ -4,7 +4,6 @@ import pytest
 
 from yasched.utilizing.coloring.Color import Color
 
-
 # ---------------------------------------------------------------------------
 # Construction — sweet path
 # ---------------------------------------------------------------------------

@@ -6,7 +6,6 @@ import pytest
 
 from yasched.utilizing.structuring.GenericSingleton import GenericSingleton
 
-
 # ---------------------------------------------------------------------------
 # Minimal concrete subclasses used across tests
 # ---------------------------------------------------------------------------

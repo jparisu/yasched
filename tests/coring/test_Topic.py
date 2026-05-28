@@ -6,7 +6,6 @@ from yasched.coring.Layout import BackgroundStyle, Layout
 from yasched.coring.Topic import Topic
 from yasched.utilizing.coloring.Color import Color
 
-
 # ---------------------------------------------------------------------------
 # Construction — sweet path
 # ---------------------------------------------------------------------------

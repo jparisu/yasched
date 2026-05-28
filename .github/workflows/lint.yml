@@ -26,56 +26,10 @@ jobs:
         run: |
           # Upgrade pip first to keep dependency resolution stable.
           python -m pip install --upgrade pip
-          # Install the project with lint dependencies.
-          python -m pip install -e ".[lint]"
+          # Install the project with the tool versions used by local checks.
+          python -m pip install -e ".[dev]"
 
-      - name: Run ruff
+      - name: Run pre-commit
         run: |
-          # Check source and tests for lint violations.
-          ruff check src tests
-          # Ensure formatting matches the configured Ruff formatter rules.
-          ruff format --check src tests
-
-  types:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          # Upgrade pip first to keep dependency resolution stable.
-          python -m pip install --upgrade pip
-          # Install the project with type-checking dependencies.
-          python -m pip install -e ".[lint]"
-
-      - name: Run mypy
-        run: |
-          # Type-check the package source tree.
-          mypy src/yasched
-
-  spell-checker:
-    name: Test Python spelling
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[lint]"
-
-    - name: Spell check (codespell)
-      run: codespell --config .spelling/.codespellrc .
+          # Run the same local quality gate used before commits.
+          pre-commit run --all-files

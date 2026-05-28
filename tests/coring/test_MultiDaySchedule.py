@@ -6,7 +6,6 @@ import pytest
 
 from yasched.coring.MultiDaySchedule import MultiDaySchedule
 
-
 # ---------------------------------------------------------------------------
 # Construction — sweet path
 # ---------------------------------------------------------------------------

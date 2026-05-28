@@ -4,15 +4,15 @@ import datetime
 
 import pytest
 
-from yasched.coring.Layout import Layout
-from yasched.coring.SingleDaySchedule import SingleDaySchedule
-from yasched.coring.Task import Task
 from yasched.coring._shared import (
     BlockedBy,
     EffortRange,
     EventLink,
     TaskStatus,
 )
+from yasched.coring.Layout import Layout
+from yasched.coring.SingleDaySchedule import SingleDaySchedule
+from yasched.coring.Task import Task
 from yasched.utilizing.timing.Duration import Duration
 
 

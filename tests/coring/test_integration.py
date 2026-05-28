@@ -4,6 +4,14 @@ import datetime
 
 import pytest
 
+from yasched.coring._shared import (
+    BlockedBy,
+    EffortRange,
+    EventLink,
+    TaskStatus,
+    Weekday,
+    WeeklyAppointment,
+)
 from yasched.coring.Event import Event
 from yasched.coring.Layout import BackgroundStyle, BorderStyle, IconStyle, Layout
 from yasched.coring.MonthlySchedule import MonthlySchedule
@@ -13,17 +21,8 @@ from yasched.coring.Task import Task
 from yasched.coring.Topic import Topic
 from yasched.coring.WeeklySchedule import WeeklySchedule
 from yasched.coring.YearlySchedule import YearlySchedule
-from yasched.coring._shared import (
-    BlockedBy,
-    EffortRange,
-    EventLink,
-    TaskStatus,
-    Weekday,
-    WeeklyAppointment,
-)
 from yasched.utilizing.coloring.Color import Color
 from yasched.utilizing.timing.Duration import Duration
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -215,9 +214,7 @@ def test_full_topic_event_task_composition():
 def test_event_accepts_all_schedule_subtypes():
     schedules = [
         SingleDaySchedule(day=datetime.date(2026, 1, 1)),
-        MultiDaySchedule(
-            start_day=datetime.date(2026, 2, 1), end_day=datetime.date(2026, 2, 3)
-        ),
+        MultiDaySchedule(start_day=datetime.date(2026, 2, 1), end_day=datetime.date(2026, 2, 3)),
         WeeklySchedule(
             appointments=[
                 WeeklyAppointment(

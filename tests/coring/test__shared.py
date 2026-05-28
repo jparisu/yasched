@@ -1,4 +1,4 @@
-"""Tests for coring._shared: Weekday, WeeklyAppointment, TaskStatus, EffortRange, EventLink, BlockedBy."""
+"""Tests for coring._shared."""
 
 import datetime
 
@@ -13,7 +13,6 @@ from yasched.coring._shared import (
     WeeklyAppointment,
 )
 from yasched.utilizing.timing.Duration import Duration
-
 
 # ---------------------------------------------------------------------------
 # Weekday — sweet path

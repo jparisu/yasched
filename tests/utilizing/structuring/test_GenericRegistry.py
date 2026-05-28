@@ -4,7 +4,6 @@ import pytest
 
 from yasched.utilizing.structuring.GenericRegistry import GenericRegistry
 
-
 # ---------------------------------------------------------------------------
 # Concrete subclass for testing (str values)
 # ---------------------------------------------------------------------------

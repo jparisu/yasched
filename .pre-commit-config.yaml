@@ -1,6 +1,5 @@
 exclude: |
-  (^tests/)|
-  (^.dev/)
+  (^\.dev/)
 
 repos:
 

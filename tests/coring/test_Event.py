@@ -4,11 +4,11 @@ import datetime
 
 import pytest
 
+from yasched.coring._shared import Weekday, WeeklyAppointment
 from yasched.coring.Event import Event
 from yasched.coring.Layout import IconStyle, Layout
 from yasched.coring.SingleDaySchedule import SingleDaySchedule
 from yasched.coring.WeeklySchedule import WeeklySchedule
-from yasched.coring._shared import Weekday, WeeklyAppointment
 from yasched.utilizing.timing.Duration import Duration
 
 

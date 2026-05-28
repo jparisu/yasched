@@ -4,7 +4,6 @@ import pytest
 
 from yasched.coring.YearlySchedule import YearlySchedule
 
-
 # ---------------------------------------------------------------------------
 # Construction — sweet path
 # ---------------------------------------------------------------------------
