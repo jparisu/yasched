@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.scripts]
-yasched = "apps.yasched_cli:main"
+yasched = "apps.cli.yasched_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/jparisu/yasched"
@@ -69,6 +69,9 @@ test = [
   "pytest>=8.3.0",
   "pytest-cov>=6.1.0",
 ]
+frontend = [
+  "streamlit>=1.35.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/yasched", "apps"]
@@ -101,6 +104,10 @@ strict = true
 warn_unused_configs = true
 mypy_path = "src"
 packages = ["yasched"]
+
+[[tool.mypy.overrides]]
+module = "yasched.frontending.*"
+ignore_errors = true
 
 [tool.pytest.ini_options]
 addopts = "-ra"
