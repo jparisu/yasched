@@ -1,0 +1,112 @@
+# Backending Module Design
+
+The `backending` module is the layer between raw YAML files and the rest of the
+application. It has three responsibilities:
+
+1. **Loading** — read YAML/xYAML files, parse them into `coring` objects, and
+   write them back.
+2. **Managing** — validate consistency, detect errors, and resolve all
+   cross-entity references to produce an enriched, query-ready representation.
+3. **Interfacing** — provide a stable, high-level query API over the resolved
+   database for use by `frontending` and CLI tools.
+
+Imports allowed: `coring` and `utilizing` only.
+
+---
+
+## Three-stage pipeline
+
+```
+ YAML files          raw Python dict         Database              ResolvedDatabase
+(xYAML on disk) ──► (XymlLoader.load) ──► (DatabaseParser) ──► (DatabaseManager)
+                                                                        │
+                                               ◄── save ───────────────┘
+                                                                        │
+                                                              DatabaseInterface
+                                                              (query API layer)
+```
+
+| Stage            | Input              | Output               | Class              |
+|------------------|--------------------|----------------------|--------------------|
+| I/O              | `Path`             | `Database`           | `DatabaseLoader`   |
+| Parsing          | raw `dict`         | `Database`           | `DatabaseParser`   |
+| Validation       | `Database`         | `ResolvedDatabase`   | `DatabaseManager`  |
+| Querying         | `ResolvedDatabase` | query results        | `DatabaseInterface`|
+
+---
+
+## Classes
+
+| Class                | Design doc                                       | Purpose                                               |
+|----------------------|--------------------------------------------------|-------------------------------------------------------|
+| `Database`           | [Database.dsg](Database.dsg)                     | Raw, unresolved container of parsed coring objects    |
+| `ResolvedDatabase`   | [Database.dsg](Database.dsg)                     | Validated, reference-resolved database                |
+| `ResolvedTopic`      | [Database.dsg](Database.dsg)                     | Topic with resolved parents, effective tags/layout    |
+| `ResolvedEvent`      | [Database.dsg](Database.dsg)                     | Event with resolved topic and layout                  |
+| `ResolvedTask`       | [Database.dsg](Database.dsg)                     | Task with resolved topic, parent, events, layout      |
+| `DatabaseLoader`     | [DatabaseLoader.dsg](DatabaseLoader.dsg)         | YAML/xYAML I/O: load and save                         |
+| `DatabaseParser`     | [DatabaseLoader.dsg](DatabaseLoader.dsg)         | Converts raw dict → coring objects                    |
+| `DatabaseSerializer` | [DatabaseLoader.dsg](DatabaseLoader.dsg)         | Converts coring objects → raw dict → YAML             |
+| `DatabaseManager`    | [DatabaseManager.dsg](DatabaseManager.dsg)       | Validates consistency, resolves references            |
+| `ConsistencyError`   | [DatabaseManager.dsg](DatabaseManager.dsg)       | Base class for all consistency/integrity errors       |
+| `DatabaseInterface`  | [DatabaseInterface.dsg](DatabaseInterface.dsg)   | High-level query API over a `ResolvedDatabase`        |
+
+---
+
+## File map
+
+```
+src/yasched/backending/
+  __init__.py
+  Database.py                    # Database + ResolvedDatabase + Resolved* classes
+  loading/
+    __init__.py
+    DatabaseLoader.py            # public I/O entry point: load() / save()
+    DatabaseParser.py            # raw dict → coring objects
+    DatabaseSerializer.py        # coring objects → dict / YAML string
+  managing/
+    __init__.py
+    ConsistencyError.py          # error hierarchy
+    DatabaseManager.py           # validate() + resolve() → ResolvedDatabase
+  interfacing/
+    __init__.py
+    DatabaseInterface.py         # query API
+```
+
+---
+
+## Dependency rules
+
+- `backending` may import from `coring` and `utilizing`.
+- `backending` must **not** import from `frontending`.
+- Sub-packages within `backending` may import from each other in this order:
+  `loading` → `managing` → `interfacing` (no upward imports).
+
+---
+
+## Design notes
+
+### Future: FileHandler support
+
+`DatabaseLoader` is designed as a class (not bare functions) so that a
+future `WatchedDatabaseLoader` subclass can add filesystem watching without
+changing the public API. The `Database.source_path` field stores the original
+file path so a watcher knows which path to watch.
+
+The `DatabaseManager.resolve()` method is pure and stateless (same input
+always produces the same output), making it safe to re-run whenever files
+change on disk.
+
+### Two representations
+
+`coring` classes are plain data holders with unresolved string references.
+`backending` introduces `Resolved*` wrappers that replace every `str` reference
+with the actual Python object it points to and add computed/inherited fields
+(effective tags, effective layout, effective deadline). This separation keeps
+`coring` dependency-free while giving `backending` full freedom to enrich the model.
+
+### Default topic
+
+Any `Task` or `Event` that has no `topic_id` in the YAML is assigned to a
+synthetic default topic (id `"__default__"`, name `"Unassigned"`). The manager
+creates this topic automatically if at least one entity needs it.
