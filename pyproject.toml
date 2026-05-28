@@ -26,6 +26,9 @@ dependencies = [
 
 ]
 
+[project.scripts]
+yasched = "apps.yasched_cli:main"
+
 [project.urls]
 Homepage = "https://github.com/jparisu/yasched"
 Repository = "https://github.com/jparisu/yasched"
