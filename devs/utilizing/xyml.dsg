@@ -1,0 +1,120 @@
+# xyml — Extended YAML Module
+
+**Location:** `src/yasched/utilizing/xyml/`
+
+xyml (Extended YAML) is a superset of YAML that allows composing a complete
+YAML document from multiple files. When the parser encounters a mapping that
+contains a **directive key** (a special string such as `__file__` or `__ext__`),
+it loads the referenced file, processes it recursively, and splices its content
+into the document at that point.
+
+Directive keys are registered at startup in a singleton registry. Third-party
+code can register additional keys with custom behaviours.
+
+Class diagram: *(see individual design docs below)*
+
+---
+
+## File map
+
+```
+src/yasched/utilizing/xyml/
+  __init__.py
+  XymlKeyBehavior.py       # enum: REPLACE | EXTEND
+  XymlKeyRegistry.py       # singleton registry of directive keys
+  XymlLoader.py            # recursive loader — public entry point
+```
+
+---
+
+## Classes
+
+| Class              | Design doc                                   | Purpose                                                    |
+|--------------------|----------------------------------------------|------------------------------------------------------------|
+| `XymlKeyBehavior`  | [XymlKeyBehavior.dsg](XymlKeyBehavior.dsg)   | Enum describing what to do when a directive key is found   |
+| `XymlKeyRegistry`  | [XymlKeyRegistry.dsg](XymlKeyRegistry.dsg)   | Singleton registry mapping directive key names → behaviour |
+| `XymlLoader`       | [XymlLoader.dsg](XymlLoader.dsg)             | Loads and resolves an xyml document from a file or string  |
+
+---
+
+## Directive keys
+
+Two keys are pre-registered:
+
+| Key        | Behaviour | Description                                                                 |
+|------------|-----------|-----------------------------------------------------------------------------|
+| `__file__` | REPLACE   | Replace the entire node (the mapping that contains this key) with the file's content. Sibling keys in that mapping are not allowed and raise `XymlError`. |
+| `__ext__`  | EXTEND    | Merge the file's content into the current mapping. The file provides base values; sibling keys in the current mapping override them.                      |
+
+---
+
+## xyml document examples
+
+### `__file__` — node replacement
+
+```yaml
+# main.yaml
+schedule:
+  __file__: schedules/week01.yaml   # entire "schedule" value comes from this file
+title: My plan
+```
+
+### `__ext__` — mapping extension / inheritance
+
+```yaml
+# monday.yaml
+__ext__: base_day.yaml   # inherit all keys from base_day.yaml
+title: Monday
+start: "09:00"           # override a base key
+```
+
+### Nested usage
+
+```yaml
+# top.yaml
+events:
+  - __file__: events/meeting.yaml
+  - __file__: events/lunch.yaml
+settings:
+  __ext__: defaults.yaml
+  theme: dark
+```
+
+---
+
+## Resolution rules
+
+1. **Relative paths** are resolved relative to the directory of the file
+   that contains the directive. Absolute paths are used as-is.
+2. **Recursion**: included files are themselves parsed as xyml documents,
+   so directives can be nested arbitrarily.
+3. **Cycle detection**: if a file is currently on the include stack an
+   `XymlCircularIncludeError` is raised immediately.
+4. **`__file__` strictness**: if any key other than `__file__` appears in
+   the same mapping, `XymlError` is raised. The directive must be the sole
+   key at that level.
+5. **`__ext__` merging**: only valid inside a YAML mapping. Using it inside
+   a sequence scalar raises `XymlError`. Merge is shallow by default (keys
+   from the current mapping overwrite top-level keys from the file).
+
+---
+
+## Error types
+
+| Exception                    | Raised when                                                       |
+|------------------------------|-------------------------------------------------------------------|
+| `XymlError`                  | Base class for all xyml errors                                    |
+| `XymlFileNotFoundError`      | Referenced file does not exist                                    |
+| `XymlCircularIncludeError`   | A file includes itself directly or transitively                   |
+| `XymlDirectiveError`         | Directive key used in an invalid context (e.g. `__ext__` in list)|
+
+---
+
+## Design rules for this module
+
+- All errors are subclasses of `XymlError` (itself a subclass of `ValueError`).
+- The loader is stateless between calls; cycle detection state lives only
+  on the call stack during a single `load` / `loads` invocation.
+- The module never writes files; it is read-only with respect to the filesystem.
+- Directive key strings (e.g. `"__file__"`) are never hardcoded outside
+  `XymlKeyRegistry` — the loader always queries the registry.

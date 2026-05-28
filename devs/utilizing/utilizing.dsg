@@ -20,6 +20,10 @@ src/yasched/utilizing/
   Date.py                  # calendar date with flexible parsing
   Time.py                  # time-of-day with flexible parsing
   Duration.py              # time duration with flexible parsing
+  xyml/                    # extended-YAML multi-file composer
+    XymlKeyBehavior.py     #   enum: REPLACE | EXTEND
+    XymlKeyRegistry.py     #   singleton registry of directive keys
+    XymlLoader.py          #   recursive loader — public entry point
 ```
 
 ---
@@ -36,6 +40,14 @@ src/yasched/utilizing/
 | `Date`                   | [Date.dsg](Date.dsg)                                     | Calendar date with multi-format parsing        |
 | `Time`                   | [Time.dsg](Time.dsg)                                     | Time-of-day with multi-format parsing          |
 | `Duration`               | [Duration.dsg](Duration.dsg)                             | Time span with human-readable parsing          |
+
+### xyml sub-module — [xyml.dsg](xyml.dsg)
+
+| Class              | Design doc                                 | Purpose                                                    |
+|--------------------|--------------------------------------------|------------------------------------------------------------|
+| `XymlKeyBehavior`  | [XymlKeyBehavior.dsg](XymlKeyBehavior.dsg) | Enum: REPLACE or EXTEND                                    |
+| `XymlKeyRegistry`  | [XymlKeyRegistry.dsg](XymlKeyRegistry.dsg) | Singleton registry mapping directive key names → behaviour |
+| `XymlLoader`       | [XymlLoader.dsg](XymlLoader.dsg)           | Loads and resolves a multi-file xyml document              |
 
 ---
 
