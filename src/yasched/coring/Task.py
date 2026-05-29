@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass, field
 
-from yasched.coring._shared import BlockedBy, EffortRange, EventLink, TaskStatus
+from yasched.coring._shared import EffortRange, EventLink, TaskRelation, TaskStatus
 from yasched.coring.Layout import Layout
 from yasched.coring.Schedule import Schedule
 
@@ -16,7 +16,7 @@ class Task:
 
     id: str
     name: str
-    topic_id: str | None = None
+    topic_ids: list[str] = field(default_factory=list)
     parent_id: str | None = None
     description: str | None = None
     tags: list[str] = field(default_factory=list)
@@ -26,7 +26,7 @@ class Task:
     effort: EffortRange | None = None
     schedules: list[Schedule] = field(default_factory=list)
     event_links: list[EventLink] = field(default_factory=list)
-    blocked_by: list[BlockedBy] = field(default_factory=list)
+    relations: list[TaskRelation] = field(default_factory=list)
     layout: Layout | str | None = None
 
     def __post_init__(self) -> None:

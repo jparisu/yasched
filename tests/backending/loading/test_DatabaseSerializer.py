@@ -8,7 +8,7 @@ from yasched.backending.Database import Database
 from yasched.backending.loading.DatabaseSerializer import DatabaseSerializer
 from yasched.coring._shared import EventLink, TaskStatus
 from yasched.coring.Event import Event
-from yasched.coring.Layout import BackgroundStyle, Layout
+from yasched.coring.Layout import Layout, SolidBackground
 from yasched.coring.SingleDaySchedule import SingleDaySchedule
 from yasched.coring.Task import Task
 from yasched.coring.Topic import Topic
@@ -56,8 +56,8 @@ def test_serialize_topic_with_parents():
 def test_serialize_layout_with_background():
     from yasched.utilizing.coloring.Color import Color
 
-    bg = BackgroundStyle(type="solid", color=Color.from_name("blue"))
-    layout = Layout(id="l1", background=bg)
+    bg = SolidBackground(color=Color.from_name("blue"))
+    layout = Layout(id="l1", backgrounds=[bg])
     db = Database(layouts=[layout], topics=[], events=[], tasks=[])
     result = DatabaseSerializer.serialize(db)
     assert len(result["layouts"]) == 1
@@ -75,7 +75,7 @@ def test_serialize_event():
 
 
 def test_serialize_task_status():
-    task = Task(id="t1", name="N", topic_id="tp", status=TaskStatus.DONE)
+    task = Task(id="t1", name="N", topic_ids=["tp"], status=TaskStatus.DONE)
     db = Database(layouts=[], topics=[], events=[], tasks=[task])
     result = DatabaseSerializer.serialize(db)
     assert result["tasks"][0]["status"] == "done"
@@ -83,7 +83,7 @@ def test_serialize_task_status():
 
 def test_serialize_event_link_shorthand():
     link = EventLink(event_id="e1", use_as_deadline=True, as_context=True)
-    task = Task(id="t1", name="N", topic_id="tp", event_links=[link])
+    task = Task(id="t1", name="N", topic_ids=["tp"], event_links=[link])
     db = Database(layouts=[], topics=[], events=[], tasks=[task])
     result = DatabaseSerializer.serialize(db)
     ev_links = result["tasks"][0]["events"]

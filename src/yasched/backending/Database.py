@@ -6,7 +6,7 @@ import datetime
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from yasched.coring._shared import BlockedBy, EffortRange, EventLink, TaskStatus
+from yasched.coring._shared import EffortRange, EventLink, RelationType, TaskRelation, TaskStatus
 from yasched.coring.Event import Event
 from yasched.coring.Layout import Layout
 from yasched.coring.Schedule import Schedule
@@ -22,6 +22,7 @@ class Database:
     topics: list[Topic]
     events: list[Event]
     tasks: list[Task]
+    default_layout: Layout | None = None
     source_path: Path | None = None
 
 
@@ -82,18 +83,27 @@ class ResolvedEvent:
 
 
 @dataclass
+class ResolvedTaskRelation:
+    """A resolved relation from one task to another."""
+
+    type: RelationType
+    task: ResolvedTask
+    description: str | None = None
+
+
+@dataclass
 class ResolvedTask:
-    """Task with resolved topic, parent, events, blockers, and inherited fields."""
+    """Task with resolved topics, parent, events, relations, and inherited fields."""
 
     raw: Task
-    topic: ResolvedTopic
+    topics: list[ResolvedTopic]
     parent: ResolvedTask | None
     children: list[ResolvedTask]
     effective_tags: list[str]
     effective_layout: Layout | None
     effective_deadline: datetime.date | None
     linked_events: list[ResolvedEvent]
-    blocking_tasks: list[ResolvedTask]
+    related_tasks: list[ResolvedTaskRelation]
 
     @property
     def id(self) -> str:
@@ -124,12 +134,17 @@ class ResolvedTask:
         return self.raw.schedules
 
     @property
-    def blocked_by(self) -> list[BlockedBy]:
-        return self.raw.blocked_by
+    def relations(self) -> list[TaskRelation]:
+        return self.raw.relations
 
     @property
     def event_links(self) -> list[EventLink]:
         return self.raw.event_links
+
+    @property
+    def blocking_tasks(self) -> list[ResolvedTask]:
+        """Tasks that must complete before this task (REQUIRES relations)."""
+        return [r.task for r in self.related_tasks if r.type == RelationType.REQUIRES]
 
 
 @dataclass

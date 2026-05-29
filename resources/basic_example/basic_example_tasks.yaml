@@ -2,7 +2,7 @@
 # This demonstrates various tasks configurations
 
 - id: math_study
-  topic: exams
+  topics: exams
   events:
     - math_exam  # Shorthand: linking an event provides both context (task shown alongside event)
                  # and deadline sync (task deadline defaults to the event's date).
@@ -17,7 +17,7 @@
 
 
 - id: xmas
-  topic: my
+  topics: my
   tags:  # Tags are inherited from topic, but can be overridden here
     - holidays
   name: Prepare Christmas
@@ -36,9 +36,10 @@
     min: 2h
     max: 5h
   status: blocked  # Explicitly blocked — cannot proceed until dependency is resolved
-  blocked:
-    - description: "Blocked until knowing targets' preferences"
-      by: xmas_gifts_list  # This task is blocked until the task with id "xmas_gifts_list" is completed.
+  relations:
+    - task: xmas_gifts_list  # This task requires the task with id "xmas_gifts_list" to be completed.
+      type: requires
+      description: "Blocked until knowing targets' preferences"
 
 - id: xmas_gifts_list
   parent: xmas
@@ -60,7 +61,7 @@
   status: cancelled  # This task was dropped; plans changed
 
 - id: weekly_review
-  topic: my
+  topics: my
   name: Weekly Review
   description: Review completed tasks and plan the upcoming week.
   schedule:  # Recurring tasks use the same schedule syntax as events
@@ -74,7 +75,7 @@
   status: todo
 
 - id: monthly_budget
-  topic: my
+  topics: my
   name: Monthly Budget Review
   description: Review monthly expenses and adjust budget accordingly.
   schedule:
@@ -88,7 +89,7 @@
   status: todo
 
 - id: yearly_medical
-  topic: my
+  topics: my
   name: Annual Medical Checkup
   description: Schedule and attend yearly general medical checkup.
   schedule:

@@ -5,9 +5,10 @@ import datetime
 import pytest
 
 from yasched.coring._shared import (
-    BlockedBy,
     EffortRange,
     EventLink,
+    RelationType,
+    TaskRelation,
     TaskStatus,
 )
 from yasched.coring.Layout import Layout
@@ -29,7 +30,7 @@ def test_task_minimal():
     t = Task(id="t1", name="Study chapter 3")
     assert t.id == "t1"
     assert t.name == "Study chapter 3"
-    assert t.topic_id is None
+    assert t.topic_ids == []
     assert t.parent_id is None
     assert t.description is None
     assert t.tags == []
@@ -39,17 +40,19 @@ def test_task_minimal():
     assert t.effort is None
     assert t.schedules == []
     assert t.event_links == []
-    assert t.blocked_by == []
+    assert t.relations == []
     assert t.layout is None
 
 
 def test_task_full_one_off():
     effort = EffortRange(Duration.from_string("1h"), Duration.from_string("3h"))
     event_link = EventLink(event_id="math_exam")
-    blocked = BlockedBy(task_id="study_ch2", description="Must finish first")
+    relation = TaskRelation(
+        task_id="study_ch2", type=RelationType.REQUIRES, description="Must finish first"
+    )
     t = Task(
         id="study_ch3",
-        topic_id="math",
+        topic_ids=["math"],
         name="Study chapter 3",
         description="Read and solve exercises",
         tags=["priority"],
@@ -58,15 +61,16 @@ def test_task_full_one_off():
         status=TaskStatus.IN_PROGRESS,
         effort=effort,
         event_links=[event_link],
-        blocked_by=[blocked],
+        relations=[relation],
         layout=Layout(),
     )
-    assert t.topic_id == "math"
+    assert t.topic_ids == ["math"]
     assert t.deadline == datetime.date(2026, 6, 10)
     assert t.priority == 3
     assert t.status == TaskStatus.IN_PROGRESS
     assert len(t.event_links) == 1
-    assert len(t.blocked_by) == 1
+    assert len(t.relations) == 1
+    assert t.relations[0].type == RelationType.REQUIRES
 
 
 def test_task_recurring_no_deadline():
@@ -78,13 +82,62 @@ def test_task_recurring_no_deadline():
 def test_task_subtask_with_parent_id():
     t = Task(id="sub1", name="Subtask", parent_id="parent_task")
     assert t.parent_id == "parent_task"
-    assert t.topic_id is None  # inherited by backending
+    assert t.topic_ids == []  # inherited by backending
 
 
 def test_task_is_frozen():
     t = Task(id="t", name="N")
     with pytest.raises((AttributeError, TypeError)):
         t.id = "other"  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Multiple topics
+# ---------------------------------------------------------------------------
+
+
+def test_task_single_topic():
+    t = Task(id="t", name="N", topic_ids=["work"])
+    assert t.topic_ids == ["work"]
+
+
+def test_task_multiple_topics():
+    t = Task(id="t", name="N", topic_ids=["work", "personal"])
+    assert t.topic_ids == ["work", "personal"]
+
+
+def test_task_no_topics():
+    t = Task(id="t", name="N", topic_ids=[])
+    assert t.topic_ids == []
+
+
+# ---------------------------------------------------------------------------
+# Task relations
+# ---------------------------------------------------------------------------
+
+
+def test_task_relation_requires():
+    rel = TaskRelation(task_id="other", type=RelationType.REQUIRES)
+    t = Task(id="t", name="N", relations=[rel])
+    assert len(t.relations) == 1
+    assert t.relations[0].type == RelationType.REQUIRES
+
+
+def test_task_relation_all_types():
+    for rel_type in RelationType:
+        rel = TaskRelation(task_id="x", type=rel_type)
+        assert rel.type == rel_type
+
+
+def test_task_multiple_relations():
+    rels = [
+        TaskRelation(task_id="a", type=RelationType.REQUIRES),
+        TaskRelation(task_id="b", type=RelationType.NEEDS),
+        TaskRelation(task_id="c", type=RelationType.CONNECTED),
+        TaskRelation(task_id="d", type=RelationType.SIMILAR),
+    ]
+    t = Task(id="t", name="N", relations=rels)
+    assert len(t.relations) == 4
 
 
 # ---------------------------------------------------------------------------
@@ -102,17 +155,17 @@ def test_task_status_done():
     assert t.status == TaskStatus.DONE
 
 
-def test_task_status_blocked_without_blocked_by():
-    # status can be BLOCKED independently of blocked_by entries
+def test_task_status_blocked_without_relations():
+    # status can be BLOCKED independently of relations
     t = Task(id="t", name="N", status=TaskStatus.BLOCKED)
     assert t.status == TaskStatus.BLOCKED
-    assert t.blocked_by == []
+    assert t.relations == []
 
 
-def test_task_blocked_by_without_blocked_status():
-    # blocked_by does not automatically set status=BLOCKED
-    bb = BlockedBy(task_id="other")
-    t = Task(id="t", name="N", blocked_by=[bb])
+def test_task_requires_relation_without_blocked_status():
+    # REQUIRES relation does not automatically set status=BLOCKED
+    rel = TaskRelation(task_id="other", type=RelationType.REQUIRES)
+    t = Task(id="t", name="N", relations=[rel])
     assert t.status == TaskStatus.TODO
 
 

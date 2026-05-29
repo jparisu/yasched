@@ -1,15 +1,26 @@
 """Core domain classes: plain data holders for layouts, topics, events, and tasks."""
 
 from yasched.coring._shared import (
-    BlockedBy,
     EffortRange,
     EventLink,
+    RelationType,
+    TaskRelation,
     TaskStatus,
     Weekday,
     WeeklyAppointment,
 )
 from yasched.coring.Event import Event
-from yasched.coring.Layout import BackgroundStyle, BorderStyle, IconStyle, Layout
+from yasched.coring.Layout import (
+    BackgroundStyle,
+    BorderStyle,
+    GradientBottomLeftBackground,
+    GradientTopRightBackground,
+    IconStyle,
+    Layout,
+    PinStyle,
+    ShapeStyle,
+    SolidBackground,
+)
 from yasched.coring.MonthlySchedule import MonthlySchedule
 from yasched.coring.MultiDaySchedule import MultiDaySchedule
 from yasched.coring.Schedule import Schedule
@@ -25,10 +36,16 @@ __all__ = [
     "TaskStatus",
     "EffortRange",
     "EventLink",
-    "BlockedBy",
+    "RelationType",
+    "TaskRelation",
     "BackgroundStyle",
+    "SolidBackground",
+    "GradientTopRightBackground",
+    "GradientBottomLeftBackground",
     "BorderStyle",
     "IconStyle",
+    "ShapeStyle",
+    "PinStyle",
     "Layout",
     "Schedule",
     "WeeklySchedule",

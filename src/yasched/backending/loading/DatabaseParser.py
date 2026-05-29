@@ -9,15 +9,26 @@ from typing import Any
 from yasched.backending.Database import Database
 from yasched.backending.loading.DatabaseLoader import DatabaseParseError
 from yasched.coring._shared import (
-    BlockedBy,
     EffortRange,
     EventLink,
+    RelationType,
+    TaskRelation,
     TaskStatus,
     Weekday,
     WeeklyAppointment,
 )
 from yasched.coring.Event import Event
-from yasched.coring.Layout import BackgroundStyle, BorderStyle, IconStyle, Layout
+from yasched.coring.Layout import (
+    BackgroundStyle,
+    BorderStyle,
+    GradientBottomLeftBackground,
+    GradientTopRightBackground,
+    IconStyle,
+    Layout,
+    PinStyle,
+    ShapeStyle,
+    SolidBackground,
+)
 from yasched.coring.MonthlySchedule import MonthlySchedule
 from yasched.coring.MultiDaySchedule import MultiDaySchedule
 from yasched.coring.Schedule import Schedule
@@ -30,7 +41,7 @@ from yasched.utilizing.coloring.Color import Color
 from yasched.utilizing.timing.Duration import Duration
 from yasched.utilizing.timing.Time import Time
 
-_VALID_TOP_KEYS = {"layouts", "topics", "events", "tasks"}
+_VALID_TOP_KEYS = {"layouts", "topics", "events", "tasks", "default_layout"}
 
 _MONTH_NAMES: dict[str, int] = {
     "january": 1,
@@ -63,12 +74,22 @@ class DatabaseParser:
             topics = [DatabaseParser._parse_topic(r) for r in raw.get("topics") or []]
             events = [DatabaseParser._parse_event(r) for r in raw.get("events") or []]
             tasks = [DatabaseParser._parse_task(r) for r in raw.get("tasks") or []]
+            default_layout = (
+                DatabaseParser._parse_layout_dict(raw["default_layout"])
+                if "default_layout" in raw
+                else None
+            )
         except DatabaseParseError:
             raise
         except Exception as exc:
             raise DatabaseParseError(str(exc)) from exc
         return Database(
-            layouts=layouts, topics=topics, events=events, tasks=tasks, source_path=source_path
+            layouts=layouts,
+            topics=topics,
+            events=events,
+            tasks=tasks,
+            default_layout=default_layout,
+            source_path=source_path,
         )
 
     # ------------------------------------------------------------------
@@ -94,27 +115,55 @@ class DatabaseParser:
     @staticmethod
     def _parse_layout_dict(raw: dict[str, Any]) -> Layout:
         id_ = raw.get("id")
-        background = None
+        backgrounds: list[BackgroundStyle] = []
         if "background" in raw:
-            background = DatabaseParser._parse_background_style(raw["background"])
+            backgrounds = DatabaseParser._parse_backgrounds(raw["background"])
         border = None
         if "border" in raw:
             border = DatabaseParser._parse_border_style(raw["border"])
         icon = None
         if "icon" in raw:
             icon = DatabaseParser._parse_icon_style(raw["icon"])
-        return Layout(id=id_, background=background, border=border, icon=icon)
+        shape = None
+        if "shape" in raw:
+            shape = DatabaseParser._parse_shape_style(raw["shape"])
+        pin = None
+        if "pin" in raw:
+            pin = DatabaseParser._parse_pin_style(raw["pin"])
+        return Layout(
+            id=id_, backgrounds=backgrounds, border=border, icon=icon, shape=shape, pin=pin
+        )
+
+    @staticmethod
+    def _parse_backgrounds(raw: Any) -> list[BackgroundStyle]:
+        """Accept a single background dict or a list of background dicts."""
+        if isinstance(raw, dict):
+            return [DatabaseParser._parse_background_style(raw)]
+        if isinstance(raw, list):
+            return [DatabaseParser._parse_background_style(item) for item in raw]
+        raise DatabaseParseError(f"background must be a mapping or list, got {type(raw).__name__}")
 
     @staticmethod
     def _parse_background_style(raw: Any) -> BackgroundStyle:
         if not isinstance(raw, dict):
-            raise DatabaseParseError(f"background must be a mapping, got {type(raw).__name__}")
+            raise DatabaseParseError(
+                f"background entry must be a mapping, got {type(raw).__name__}"
+            )
         type_ = str(raw.get("type", "solid"))
-        color = DatabaseParser._parse_color(raw["color"]) if "color" in raw else None
-        colors = (
-            [DatabaseParser._parse_color(c) for c in raw["colors"]] if "colors" in raw else None
+        if type_ == "solid":
+            color = DatabaseParser._parse_color(raw["color"]) if "color" in raw else Color(0, 0, 0)
+            return SolidBackground(color=color)
+        if type_ == "gradient_tr":
+            if "color" not in raw:
+                raise DatabaseParseError("gradient_tr background requires a 'color' field")
+            return GradientTopRightBackground(color=DatabaseParser._parse_color(raw["color"]))
+        if type_ == "gradient_bl":
+            if "color" not in raw:
+                raise DatabaseParseError("gradient_bl background requires a 'color' field")
+            return GradientBottomLeftBackground(color=DatabaseParser._parse_color(raw["color"]))
+        raise DatabaseParseError(
+            f"Unknown background type {type_!r}; expected 'solid', 'gradient_tr', or 'gradient_bl'"
         )
-        return BackgroundStyle(type=type_, color=color, colors=colors)
 
     @staticmethod
     def _parse_border_style(raw: Any) -> BorderStyle:
@@ -132,6 +181,24 @@ class DatabaseParser:
         type_ = str(raw.get("type", "emoji"))
         value = str(raw.get("value", ""))
         return IconStyle(type=type_, value=value)
+
+    @staticmethod
+    def _parse_shape_style(raw: Any) -> ShapeStyle:
+        if not isinstance(raw, dict):
+            raise DatabaseParseError(f"shape must be a mapping, got {type(raw).__name__}")
+        type_ = str(raw.get("type", "rectangle"))
+        radius = str(raw["radius"]) if "radius" in raw else None
+        return ShapeStyle(type=type_, radius=radius)
+
+    @staticmethod
+    def _parse_pin_style(raw: Any) -> PinStyle:
+        if not isinstance(raw, dict):
+            raise DatabaseParseError(f"pin must be a mapping, got {type(raw).__name__}")
+        if "color" not in raw:
+            raise DatabaseParseError("pin requires a 'color' field")
+        color = DatabaseParser._parse_color(raw["color"])
+        icon = str(raw["icon"]) if "icon" in raw else None
+        return PinStyle(color=color, icon=icon)
 
     @staticmethod
     def _parse_color(value: Any) -> Color:
@@ -221,11 +288,12 @@ class DatabaseParser:
             deadline = DatabaseParser._parse_date(raw["deadline"])
         schedules = DatabaseParser._parse_schedules(raw["schedule"]) if "schedule" in raw else []
         event_links = [DatabaseParser._parse_event_link(e) for e in (raw.get("events") or [])]
-        blocked_by = [DatabaseParser._parse_blocked_by(b) for b in (raw.get("blocked") or [])]
+        relations = [DatabaseParser._parse_task_relation(r) for r in (raw.get("relations") or [])]
+        topic_ids = DatabaseParser._parse_topic_ids(raw)
         return Task(
             id=str(raw["id"]),
             name=str(raw["name"]),
-            topic_id=str(raw["topic"]) if "topic" in raw else None,
+            topic_ids=topic_ids,
             parent_id=str(raw["parent"]) if "parent" in raw else None,
             description=str(raw["description"]) if "description" in raw else None,
             tags=list(raw.get("tags") or []),
@@ -235,12 +303,24 @@ class DatabaseParser:
             effort=effort,
             schedules=schedules,
             event_links=event_links,
-            blocked_by=blocked_by,
+            relations=relations,
             layout=DatabaseParser._parse_layout(raw.get("layout")),
         )
 
+    @staticmethod
+    def _parse_topic_ids(raw: dict[str, Any]) -> list[str]:
+        """Accept 'topics' (list or string) key."""
+        value = raw.get("topics")
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(t) for t in value]
+        raise DatabaseParseError(f"'topics' must be a string or list, got {type(value).__name__}")
+
     # ------------------------------------------------------------------
-    # EventLink / BlockedBy
+    # EventLink / TaskRelation
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -256,15 +336,26 @@ class DatabaseParser:
         raise DatabaseParseError(f"Cannot parse event link from {raw!r}")
 
     @staticmethod
-    def _parse_blocked_by(raw: Any) -> BlockedBy:
-        if not isinstance(raw, dict) or "by" not in raw:
-            raise DatabaseParseError(
-                f"Blocked-by entry must be a mapping with 'by' key, got {raw!r}"
+    def _parse_task_relation(raw: Any) -> TaskRelation:
+        if isinstance(raw, str):
+            return TaskRelation(task_id=raw, type=RelationType.CONNECTED)
+        if isinstance(raw, dict):
+            if "task" not in raw:
+                raise DatabaseParseError(f"Task relation entry must have a 'task' key, got {raw!r}")
+            type_str = str(raw.get("type", "connected"))
+            try:
+                rel_type = RelationType(type_str)
+            except ValueError:
+                raise DatabaseParseError(
+                    f"Unknown relation type {type_str!r}; "
+                    f"expected one of {[t.value for t in RelationType]}"
+                ) from None
+            return TaskRelation(
+                task_id=str(raw["task"]),
+                type=rel_type,
+                description=str(raw["description"]) if "description" in raw else None,
             )
-        return BlockedBy(
-            task_id=str(raw["by"]),
-            description=str(raw["description"]) if "description" in raw else None,
-        )
+        raise DatabaseParseError(f"Cannot parse task relation from {raw!r}")
 
     # ------------------------------------------------------------------
     # Schedules

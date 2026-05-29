@@ -16,8 +16,9 @@ from yasched.backending.managing.ConsistencyError import (
 )
 from yasched.backending.managing.DatabaseManager import DatabaseManager
 from yasched.coring._shared import (
-    BlockedBy,
     EventLink,
+    RelationType,
+    TaskRelation,
     TaskStatus,
     Weekday,
     WeeklyAppointment,
@@ -56,19 +57,20 @@ def _task(
     status=TaskStatus.TODO,
     tags=None,
     event_links=None,
-    blocked_by=None,
+    relations=None,
     schedules=None,
 ):
+    topic_ids = [topic_id] if topic_id is not None else []
     return Task(
         id=id,
         name=name,
-        topic_id=topic_id,
+        topic_ids=topic_ids,
         parent_id=parent_id,
         deadline=deadline,
         status=status,
         tags=tags or [],
         event_links=event_links or [],
-        blocked_by=blocked_by or [],
+        relations=relations or [],
         schedules=schedules or [],
     )
 
@@ -156,9 +158,12 @@ def test_validate_unknown_event_link():
     assert any(isinstance(e, UnknownReferenceError) for e in errs)
 
 
-def test_validate_unknown_blocked_by():
+def test_validate_unknown_relation_task():
     db = _db(
-        topics=[_topic("t1")], tasks=[_task("t1", blocked_by=[BlockedBy(task_id="ghost_task")])]
+        topics=[_topic("t1")],
+        tasks=[
+            _task("t1", relations=[TaskRelation(task_id="ghost_task", type=RelationType.REQUIRES)])
+        ],
     )
     errs = DatabaseManager.validate(db)
     assert any(isinstance(e, UnknownReferenceError) for e in errs)
@@ -329,7 +334,7 @@ def test_resolve_single_task():
     rdb = DatabaseManager.resolve(db)
     assert "task1" in rdb.tasks
     rt = rdb.tasks["task1"]
-    assert rt.topic.id == "t1"
+    assert any(tp.id == "t1" for tp in rt.topics)
     assert rt.parent is None
 
 
@@ -389,7 +394,11 @@ def test_resolve_topic_own_tags_override_parent():
 
 
 def test_resolve_topic_inherits_layout_from_parent():
-    layout = Layout(id="blue")
+    from yasched.coring.Layout import SolidBackground
+    from yasched.utilizing.coloring.Color import Color
+
+    _c = Color(0, 0, 1)
+    layout = Layout(id="blue", backgrounds=[SolidBackground(color=_c)])
     db = _db(
         layouts=[layout],
         topics=[
@@ -402,8 +411,14 @@ def test_resolve_topic_inherits_layout_from_parent():
 
 
 def test_resolve_topic_own_layout_overrides_parent():
-    l1 = Layout(id="l1")
-    l2 = Layout(id="l2")
+    from yasched.coring.Layout import BorderStyle
+    from yasched.utilizing.coloring.Color import Color
+
+    _c = Color(0, 0, 1)
+    border1 = BorderStyle(type="dashed", width="1px", color=_c)
+    border2 = BorderStyle(type="solid", width="3px", color=_c)
+    l1 = Layout(id="l1", border=border1)
+    l2 = Layout(id="l2", border=border2)
     db = _db(
         layouts=[l1, l2],
         topics=[
@@ -412,7 +427,8 @@ def test_resolve_topic_own_layout_overrides_parent():
         ],
     )
     rdb = DatabaseManager.resolve(db)
-    assert rdb.topics["child"].effective_layout is rdb.layouts["l2"]
+    assert rdb.topics["child"].effective_layout is not None
+    assert rdb.topics["child"].effective_layout.border.type == "solid"
 
 
 def test_resolve_task_inherits_topic_from_parent():
@@ -424,7 +440,7 @@ def test_resolve_task_inherits_topic_from_parent():
         ],
     )
     rdb = DatabaseManager.resolve(db)
-    assert rdb.tasks["child_task"].topic.id == "t1"
+    assert any(tp.id == "t1" for tp in rdb.tasks["child_task"].topics)
 
 
 def test_resolve_task_linked_events():
@@ -443,7 +459,11 @@ def test_resolve_task_blocking_tasks():
         topics=[_topic("t1")],
         tasks=[
             _task("blocker", topic_id="t1"),
-            _task("blocked", topic_id="t1", blocked_by=[BlockedBy(task_id="blocker")]),
+            _task(
+                "blocked",
+                topic_id="t1",
+                relations=[TaskRelation(task_id="blocker", type=RelationType.REQUIRES)],
+            ),
         ],
     )
     rdb = DatabaseManager.resolve(db)
@@ -486,13 +506,19 @@ def test_resolve_task_own_deadline_takes_precedence():
 
 
 def test_resolve_layout_string_resolved():
-    layout = Layout(id="my_layout")
+    from yasched.coring.Layout import BorderStyle
+    from yasched.utilizing.coloring.Color import Color
+
+    _c = Color(0, 1, 0)
+    border = BorderStyle(type="dotted", width="2px", color=_c)
+    layout = Layout(id="my_layout", border=border)
     db = _db(
         layouts=[layout],
         topics=[_topic("t1", layout="my_layout")],
     )
     rdb = DatabaseManager.resolve(db)
-    assert rdb.topics["t1"].effective_layout is rdb.layouts["my_layout"]
+    assert rdb.topics["t1"].effective_layout is not None
+    assert rdb.topics["t1"].effective_layout.border.type == "dotted"
 
 
 # ---------------------------------------------------------------------------
@@ -503,7 +529,7 @@ def test_resolve_layout_string_resolved():
 def test_resolve_task_without_topic_gets_default():
     db = _db(tasks=[Task(id="orphan", name="N")])
     rdb = DatabaseManager.resolve(db)
-    assert rdb.tasks["orphan"].topic.id == "__default__"
+    assert any(tp.id == "__default__" for tp in rdb.tasks["orphan"].topics)
     assert "__default__" in rdb.topics
 
 

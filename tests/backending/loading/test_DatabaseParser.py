@@ -124,27 +124,53 @@ def test_parse_layout_named():
 
 
 def test_parse_layout_with_background_solid():
+    from yasched.coring.Layout import SolidBackground
+
     db = _parse({"layouts": [{"id": "l1", "background": {"type": "solid", "color": "red"}}]})
     layout = db.layouts[0]
-    assert layout.background is not None
-    assert layout.background.type == "solid"
-    assert layout.background.color is not None
+    assert len(layout.backgrounds) == 1
+    assert isinstance(layout.backgrounds[0], SolidBackground)
+    assert layout.backgrounds[0].color is not None
 
 
-def test_parse_layout_with_background_gradient():
+def test_parse_layout_with_background_gradient_tr():
+    from yasched.coring.Layout import GradientTopRightBackground
+
     db = _parse(
         {
             "layouts": [
                 {
                     "id": "l1",
-                    "background": {"type": "gradient", "colors": ["red", "blue"]},
+                    "background": {"type": "gradient_tr", "color": "red"},
                 }
             ]
         }
     )
     layout = db.layouts[0]
-    assert layout.background.type == "gradient"
-    assert len(layout.background.colors) == 2
+    assert len(layout.backgrounds) == 1
+    assert isinstance(layout.backgrounds[0], GradientTopRightBackground)
+
+
+def test_parse_layout_with_two_gradient_layers():
+    from yasched.coring.Layout import GradientBottomLeftBackground, GradientTopRightBackground
+
+    db = _parse(
+        {
+            "layouts": [
+                {
+                    "id": "l1",
+                    "background": [
+                        {"type": "gradient_tr", "color": "red"},
+                        {"type": "gradient_bl", "color": "blue"},
+                    ],
+                }
+            ]
+        }
+    )
+    layout = db.layouts[0]
+    assert len(layout.backgrounds) == 2
+    assert isinstance(layout.backgrounds[0], GradientTopRightBackground)
+    assert isinstance(layout.backgrounds[1], GradientBottomLeftBackground)
 
 
 def test_parse_layout_with_border():
@@ -373,11 +399,11 @@ def test_parse_event_weekly_schedule_with_dates():
 
 
 def test_parse_task_minimal():
-    db = _parse({"tasks": [{"id": "t1", "name": "Task One", "topic": "my_topic"}]})
+    db = _parse({"tasks": [{"id": "t1", "name": "Task One", "topics": "my_topic"}]})
     task = db.tasks[0]
     assert task.id == "t1"
     assert task.name == "Task One"
-    assert task.topic_id == "my_topic"
+    assert task.topic_ids == ["my_topic"]
     assert task.status == TaskStatus.TODO
 
 
@@ -388,7 +414,7 @@ def test_parse_task_full_fields():
                 {
                     "id": "t1",
                     "name": "Task One",
-                    "topic": "tp",
+                    "topics": "tp",
                     "description": "desc",
                     "tags": ["x"],
                     "deadline": datetime.date(2026, 12, 24),
@@ -420,7 +446,7 @@ def test_parse_task_with_parent():
         }
     )
     assert db.tasks[0].parent_id == "parent_task"
-    assert db.tasks[0].topic_id is None
+    assert db.tasks[0].topic_ids == []
 
 
 def test_parse_task_event_link_shorthand():
@@ -430,7 +456,7 @@ def test_parse_task_event_link_shorthand():
                 {
                     "id": "t1",
                     "name": "N",
-                    "topic": "tp",
+                    "topics": "tp",
                     "events": ["event_id"],
                 }
             ]
@@ -450,7 +476,7 @@ def test_parse_task_event_link_structured():
                 {
                     "id": "t1",
                     "name": "N",
-                    "topic": "tp",
+                    "topics": "tp",
                     "events": [{"id": "ev", "use_as_deadline": False, "as_context": True}],
                 }
             ]
@@ -461,28 +487,58 @@ def test_parse_task_event_link_structured():
     assert link.use_as_deadline is False
 
 
-def test_parse_task_blocked_by():
+def test_parse_task_relations():
+    from yasched.coring._shared import RelationType
+
     db = _parse(
         {
             "tasks": [
                 {
                     "id": "t1",
                     "name": "N",
-                    "topic": "tp",
-                    "blocked": [{"by": "other_task", "description": "reason"}],
+                    "topics": "tp",
+                    "relations": [
+                        {"task": "other_task", "type": "requires", "description": "reason"}
+                    ],
                 }
             ]
         }
     )
-    blocks = db.tasks[0].blocked_by
-    assert len(blocks) == 1
-    assert blocks[0].task_id == "other_task"
-    assert blocks[0].description == "reason"
+    rels = db.tasks[0].relations
+    assert len(rels) == 1
+    assert rels[0].task_id == "other_task"
+    assert rels[0].type == RelationType.REQUIRES
+    assert rels[0].description == "reason"
 
 
-def test_parse_task_blocked_by_no_description():
-    db = _parse({"tasks": [{"id": "t1", "name": "N", "topic": "tp", "blocked": [{"by": "other"}]}]})
-    assert db.tasks[0].blocked_by[0].description is None
+def test_parse_task_relation_no_description():
+    db = _parse(
+        {
+            "tasks": [
+                {
+                    "id": "t1",
+                    "name": "N",
+                    "topics": "tp",
+                    "relations": [{"task": "other", "type": "needs"}],
+                }
+            ]
+        }
+    )
+    assert db.tasks[0].relations[0].description is None
+
+
+def test_parse_task_relation_shorthand_string():
+    from yasched.coring._shared import RelationType
+
+    db = _parse({"tasks": [{"id": "t1", "name": "N", "relations": ["other_task"]}]})
+    rel = db.tasks[0].relations[0]
+    assert rel.task_id == "other_task"
+    assert rel.type == RelationType.CONNECTED
+
+
+def test_parse_task_multiple_topics():
+    db = _parse({"tasks": [{"id": "t1", "name": "N", "topics": ["work", "personal"]}]})
+    assert db.tasks[0].topic_ids == ["work", "personal"]
 
 
 def test_parse_task_recurring_schedule():
@@ -492,7 +548,7 @@ def test_parse_task_recurring_schedule():
                 {
                     "id": "t1",
                     "name": "N",
-                    "topic": "tp",
+                    "topics": "tp",
                     "schedule": {
                         "type": "weekly",
                         "week_days": ["monday"],
@@ -508,12 +564,12 @@ def test_parse_task_recurring_schedule():
 
 
 def test_parse_task_status_done():
-    db = _parse({"tasks": [{"id": "t", "name": "N", "topic": "tp", "status": "done"}]})
+    db = _parse({"tasks": [{"id": "t", "name": "N", "topics": "tp", "status": "done"}]})
     assert db.tasks[0].status == TaskStatus.DONE
 
 
 def test_parse_task_status_cancelled():
-    db = _parse({"tasks": [{"id": "t", "name": "N", "topic": "tp", "status": "cancelled"}]})
+    db = _parse({"tasks": [{"id": "t", "name": "N", "topics": "tp", "status": "cancelled"}]})
     assert db.tasks[0].status == TaskStatus.CANCELLED
 
 
@@ -595,13 +651,19 @@ def test_parse_time_from_datetime_time():
 
 
 def test_parse_color_name():
+    from yasched.coring.Layout import SolidBackground
+
     db = _parse({"layouts": [{"id": "l1", "background": {"type": "solid", "color": "blue"}}]})
-    assert db.layouts[0].background.color is not None
+    assert isinstance(db.layouts[0].backgrounds[0], SolidBackground)
+    assert db.layouts[0].backgrounds[0].color is not None
 
 
 def test_parse_color_hex():
+    from yasched.coring.Layout import SolidBackground
+
     db = _parse({"layouts": [{"id": "l1", "background": {"type": "solid", "color": "#ff0000"}}]})
-    assert db.layouts[0].background.color is not None
+    assert isinstance(db.layouts[0].backgrounds[0], SolidBackground)
+    assert db.layouts[0].backgrounds[0].color is not None
 
 
 # ---------------------------------------------------------------------------
@@ -633,7 +695,7 @@ def test_parse_event_missing_schedule_raises():
 
 def test_parse_task_missing_name_raises():
     with pytest.raises(DatabaseParseError):
-        _parse({"tasks": [{"id": "t1", "topic": "tp"}]})
+        _parse({"tasks": [{"id": "t1", "topics": "tp"}]})
 
 
 def test_parse_unknown_schedule_type_raises():

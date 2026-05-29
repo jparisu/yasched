@@ -5,9 +5,10 @@ import datetime
 import pytest
 
 from yasched.coring._shared import (
-    BlockedBy,
     EffortRange,
     EventLink,
+    RelationType,
+    TaskRelation,
     TaskStatus,
     Weekday,
     WeeklyAppointment,
@@ -261,32 +262,51 @@ def test_event_link_empty_id_allowed():
 
 
 # ---------------------------------------------------------------------------
-# BlockedBy — sweet path
+# RelationType — sweet path
 # ---------------------------------------------------------------------------
 
 
-def test_blocked_by_no_description():
-    bb = BlockedBy(task_id="study_ch2")
-    assert bb.task_id == "study_ch2"
-    assert bb.description is None
+def test_relation_type_values():
+    assert RelationType.REQUIRES.value == "requires"
+    assert RelationType.NEEDS.value == "needs"
+    assert RelationType.CONNECTED.value == "connected"
+    assert RelationType.SIMILAR.value == "similar"
 
 
-def test_blocked_by_with_description():
-    bb = BlockedBy(task_id="study_ch2", description="Must finish ch2 first")
-    assert bb.description == "Must finish ch2 first"
+def test_relation_type_from_string():
+    assert RelationType("requires") == RelationType.REQUIRES
+    assert RelationType("similar") == RelationType.SIMILAR
 
 
-def test_blocked_by_is_frozen():
-    bb = BlockedBy(task_id="x")
+def test_relation_type_unknown_raises():
+    with pytest.raises(ValueError):
+        RelationType("blocks")
+
+
+# ---------------------------------------------------------------------------
+# TaskRelation — sweet path
+# ---------------------------------------------------------------------------
+
+
+def test_task_relation_no_description():
+    rel = TaskRelation(task_id="study_ch2", type=RelationType.REQUIRES)
+    assert rel.task_id == "study_ch2"
+    assert rel.type == RelationType.REQUIRES
+    assert rel.description is None
+
+
+def test_task_relation_with_description():
+    rel = TaskRelation(task_id="study_ch2", type=RelationType.NEEDS, description="Prereq")
+    assert rel.description == "Prereq"
+
+
+def test_task_relation_is_frozen():
+    rel = TaskRelation(task_id="x", type=RelationType.CONNECTED)
     with pytest.raises((AttributeError, TypeError)):
-        bb.task_id = "y"  # type: ignore[misc]
+        rel.task_id = "y"  # type: ignore[misc]
 
 
-# ---------------------------------------------------------------------------
-# BlockedBy — corner cases
-# ---------------------------------------------------------------------------
-
-
-def test_blocked_by_empty_description_string():
-    bb = BlockedBy(task_id="t1", description="")
-    assert bb.description == ""
+def test_task_relation_all_types():
+    for rt in RelationType:
+        rel = TaskRelation(task_id="t", type=rt)
+        assert rel.type == rt

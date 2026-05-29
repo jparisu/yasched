@@ -139,8 +139,8 @@ class DatabaseInterface:
     ) -> list[ResolvedTask]:
         if include_subtopics:
             sub_ids = {topic_id} | {t.id for t in self.get_topic_subtree(topic_id)}
-            return [t for t in self._db.tasks.values() if t.topic.id in sub_ids]
-        return [t for t in self._db.tasks.values() if t.topic.id == topic_id]
+            return [t for t in self._db.tasks.values() if any(tp.id in sub_ids for tp in t.topics)]
+        return [t for t in self._db.tasks.values() if any(tp.id == topic_id for tp in t.topics)]
 
     def get_tasks_with_tag(self, tag: str) -> list[ResolvedTask]:
         return [t for t in self._db.tasks.values() if tag in t.effective_tags]
@@ -331,8 +331,8 @@ class DatabaseInterface:
     def task_count_by_topic(self) -> dict[str, int]:
         counts: dict[str, int] = {}
         for t in self._db.tasks.values():
-            tid = t.topic.id
-            counts[tid] = counts.get(tid, 0) + 1
+            for topic in t.topics:
+                counts[topic.id] = counts.get(topic.id, 0) + 1
         return counts
 
 

@@ -3,10 +3,10 @@
 
 - id: my_layout
   background:
-    type: gradient
-    colors:
-      - lightgreen
-      - white
+    - type: gradient_tr
+      color: lightgreen
+    - type: gradient_bl
+      color: white
   border:
     type: solid
     width: 2px

@@ -8,9 +8,19 @@ from typing import Any, TypeVar
 import yaml
 
 from yasched.backending.Database import Database
-from yasched.coring._shared import BlockedBy, EventLink, WeeklyAppointment
+from yasched.coring._shared import EventLink, TaskRelation, WeeklyAppointment
 from yasched.coring.Event import Event
-from yasched.coring.Layout import BackgroundStyle, BorderStyle, IconStyle, Layout
+from yasched.coring.Layout import (
+    BackgroundStyle,
+    BorderStyle,
+    GradientBottomLeftBackground,
+    GradientTopRightBackground,
+    IconStyle,
+    Layout,
+    PinStyle,
+    ShapeStyle,
+    SolidBackground,
+)
 from yasched.coring.MonthlySchedule import MonthlySchedule
 from yasched.coring.MultiDaySchedule import MultiDaySchedule
 from yasched.coring.Schedule import Schedule
@@ -36,6 +46,8 @@ class DatabaseSerializer:
             "events": [DatabaseSerializer._serialize_event(e) for e in database.events],
             "tasks": [DatabaseSerializer._serialize_task(t) for t in database.tasks],
         }
+        if database.default_layout is not None:
+            result["default_layout"] = DatabaseSerializer._layout_to_dict(database.default_layout)
         return result
 
     @staticmethod
@@ -68,22 +80,30 @@ class DatabaseSerializer:
         d: dict[str, Any] = {}
         if layout.id is not None:
             d["id"] = layout.id
-        if layout.background is not None:
-            d["background"] = DatabaseSerializer._serialize_background(layout.background)
+        if layout.backgrounds:
+            serialized_bgs = [
+                DatabaseSerializer._serialize_background(bg) for bg in layout.backgrounds
+            ]
+            d["background"] = serialized_bgs[0] if len(serialized_bgs) == 1 else serialized_bgs
         if layout.border is not None:
             d["border"] = DatabaseSerializer._serialize_border(layout.border)
         if layout.icon is not None:
             d["icon"] = DatabaseSerializer._serialize_icon(layout.icon)
+        if layout.shape is not None:
+            d["shape"] = DatabaseSerializer._serialize_shape(layout.shape)
+        if layout.pin is not None:
+            d["pin"] = DatabaseSerializer._serialize_pin(layout.pin)
         return d
 
     @staticmethod
     def _serialize_background(bg: BackgroundStyle) -> dict[str, Any]:
-        d: dict[str, Any] = {"type": bg.type}
-        if bg.color is not None:
-            d["color"] = bg.color.to_hex()
-        if bg.colors is not None:
-            d["colors"] = [c.to_hex() for c in bg.colors]
-        return d
+        if isinstance(bg, SolidBackground):
+            return {"type": "solid", "color": bg.color.to_hex()}
+        if isinstance(bg, GradientTopRightBackground):
+            return {"type": "gradient_tr", "color": bg.color.to_hex()}
+        if isinstance(bg, GradientBottomLeftBackground):
+            return {"type": "gradient_bl", "color": bg.color.to_hex()}
+        raise ValueError(f"Unknown background type: {type(bg).__name__}")
 
     @staticmethod
     def _serialize_border(border: BorderStyle) -> dict[str, Any]:
@@ -92,6 +112,20 @@ class DatabaseSerializer:
     @staticmethod
     def _serialize_icon(icon: IconStyle) -> dict[str, Any]:
         return {"type": icon.type, "value": icon.value}
+
+    @staticmethod
+    def _serialize_shape(shape: ShapeStyle) -> dict[str, Any]:
+        d: dict[str, Any] = {"type": shape.type}
+        if shape.radius is not None:
+            d["radius"] = shape.radius
+        return d
+
+    @staticmethod
+    def _serialize_pin(pin: PinStyle) -> dict[str, Any]:
+        d: dict[str, Any] = {"color": pin.color.to_hex()}
+        if pin.icon is not None:
+            d["icon"] = pin.icon
+        return d
 
     # ------------------------------------------------------------------
     # Topic
@@ -142,8 +176,8 @@ class DatabaseSerializer:
     @staticmethod
     def _serialize_task(task: Task) -> dict[str, Any]:
         d: dict[str, Any] = {"id": task.id, "name": task.name}
-        if task.topic_id is not None:
-            d["topic"] = task.topic_id
+        if task.topic_ids:
+            d["topics"] = task.topic_ids[0] if len(task.topic_ids) == 1 else list(task.topic_ids)
         if task.parent_id is not None:
             d["parent"] = task.parent_id
         if task.description is not None:
@@ -164,8 +198,10 @@ class DatabaseSerializer:
             d["events"] = [
                 DatabaseSerializer._serialize_event_link(link) for link in task.event_links
             ]
-        if task.blocked_by:
-            d["blocked"] = [DatabaseSerializer._serialize_blocked_by(b) for b in task.blocked_by]
+        if task.relations:
+            d["relations"] = [
+                DatabaseSerializer._serialize_task_relation(r) for r in task.relations
+            ]
         layout = DatabaseSerializer._serialize_layout(task.layout)
         if layout is not None:
             d["layout"] = layout
@@ -246,10 +282,10 @@ class DatabaseSerializer:
         return d
 
     @staticmethod
-    def _serialize_blocked_by(b: BlockedBy) -> dict[str, Any]:
-        d: dict[str, Any] = {"by": b.task_id}
-        if b.description is not None:
-            d["description"] = b.description
+    def _serialize_task_relation(relation: TaskRelation) -> Any:
+        d: dict[str, Any] = {"task": relation.task_id, "type": relation.type.value}
+        if relation.description is not None:
+            d["description"] = relation.description
         return d
 
 

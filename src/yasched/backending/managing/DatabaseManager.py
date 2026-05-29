@@ -10,6 +10,7 @@ from yasched.backending.Database import (
     ResolvedDatabase,
     ResolvedEvent,
     ResolvedTask,
+    ResolvedTaskRelation,
     ResolvedTopic,
 )
 from yasched.backending.managing.ConsistencyError import (
@@ -22,7 +23,7 @@ from yasched.backending.managing.ConsistencyError import (
 )
 from yasched.coring._shared import EventLink
 from yasched.coring.Event import Event
-from yasched.coring.Layout import Layout
+from yasched.coring.Layout import BackgroundStyle, Layout
 from yasched.coring.MonthlySchedule import MonthlySchedule
 from yasched.coring.MultiDaySchedule import MultiDaySchedule
 from yasched.coring.SingleDaySchedule import SingleDaySchedule
@@ -31,6 +32,74 @@ from yasched.coring.Topic import Topic
 from yasched.coring.WeeklySchedule import WeeklySchedule
 
 _DEFAULT_TOPIC_ID = "__default__"
+
+_EMPTY_LAYOUT = Layout()
+
+
+def _merge_layouts(low: Layout, high: Layout) -> Layout:
+    """Return a new Layout where high-priority fields override low-priority ones.
+
+    For backgrounds, layers are grouped by concrete type: high replaces same type,
+    different types coexist so they can be composed visually (e.g. gradient_tr from
+    one source alongside gradient_bl from another).
+    """
+    merged_bgs: dict[type[BackgroundStyle], BackgroundStyle] = {
+        type(bg): bg for bg in low.backgrounds
+    }
+    for bg in high.backgrounds:
+        merged_bgs[type(bg)] = bg
+    return Layout(
+        backgrounds=list(merged_bgs.values()),
+        border=high.border if high.border is not None else low.border,
+        icon=high.icon if high.icon is not None else low.icon,
+        shape=high.shape if high.shape is not None else low.shape,
+        pin=high.pin if high.pin is not None else low.pin,
+    )
+
+
+def _is_empty_layout(layout: Layout) -> bool:
+    return (
+        not layout.backgrounds
+        and layout.border is None
+        and layout.icon is None
+        and layout.shape is None
+        and layout.pin is None
+    )
+
+
+def _resolve_own_layout(
+    own: Layout | str | None,
+    named: dict[str, Layout],
+) -> Layout | None:
+    if isinstance(own, Layout):
+        return own
+    if isinstance(own, str):
+        return named.get(own)
+    return None
+
+
+def _compute_effective_layout(
+    own: Layout | str | None,
+    parent_layout: Layout | None,
+    topic_layouts: list[Layout | None],
+    default_layout: Layout | None,
+    named: dict[str, Layout],
+) -> Layout | None:
+    """Merge layout layers from lowest to highest priority:
+    default → topics (in order) → parent → own entity.
+    """
+    result = _EMPTY_LAYOUT
+    if default_layout is not None:
+        result = _merge_layouts(result, default_layout)
+    for tl in topic_layouts:
+        if tl is not None:
+            result = _merge_layouts(result, tl)
+    if parent_layout is not None:
+        result = _merge_layouts(result, parent_layout)
+    own_resolved = _resolve_own_layout(own, named)
+    if own_resolved is not None:
+        result = _merge_layouts(result, own_resolved)
+    return None if _is_empty_layout(result) else result
 
 
 class DatabaseManager:
@@ -145,15 +214,16 @@ class DatabaseManager:
 
         for task in database.tasks:
             _check_layout_ref("task", task.id, task.layout)
-            if task.topic_id is not None and task.topic_id not in topic_ids:
-                errors.append(
-                    UnknownReferenceError(
-                        entity="task",
-                        entity_id=task.id,
-                        field="topic_id",
-                        message=f"Topic {task.topic_id!r} not found",
+            for tid in task.topic_ids:
+                if tid not in topic_ids:
+                    errors.append(
+                        UnknownReferenceError(
+                            entity="task",
+                            entity_id=task.id,
+                            field="topic_ids",
+                            message=f"Topic {tid!r} not found",
+                        )
                     )
-                )
             if task.parent_id is not None and task.parent_id not in task_ids:
                 errors.append(
                     UnknownReferenceError(
@@ -173,14 +243,14 @@ class DatabaseManager:
                             message=f"Event {link.event_id!r} not found",
                         )
                     )
-            for block in task.blocked_by:
-                if block.task_id not in task_ids:
+            for rel in task.relations:
+                if rel.task_id not in task_ids:
                     errors.append(
                         UnknownReferenceError(
                             entity="task",
                             entity_id=task.id,
-                            field="blocked_by",
-                            message=f"Blocking task {block.task_id!r} not found",
+                            field="relations",
+                            message=f"Related task {rel.task_id!r} not found",
                         )
                     )
         return errors
@@ -305,7 +375,7 @@ class DatabaseManager:
     def _inject_default_topic(database: Database) -> Database:
         topic_ids = {t.id for t in database.topics}
         needs_default = any((e.topic_id not in topic_ids) for e in database.events) or any(
-            (t.topic_id is None and t.parent_id is None) for t in database.tasks
+            (not t.topic_ids and t.parent_id is None) for t in database.tasks
         )
         if not needs_default:
             return database
@@ -315,6 +385,7 @@ class DatabaseManager:
             topics=[default] + list(database.topics),
             events=database.events,
             tasks=database.tasks,
+            default_layout=database.default_layout,
             source_path=database.source_path,
         )
 
@@ -326,6 +397,7 @@ class DatabaseManager:
     def _resolve_topics(database: Database, layouts: dict[str, Layout]) -> dict[str, ResolvedTopic]:
         topic_map = {t.id: t for t in database.topics}
         resolved: dict[str, ResolvedTopic] = {}
+        default_layout = database.default_layout
 
         # Topological order: parents before children
         parent_to_children: dict[str, list[str]] = {t.id: [] for t in database.topics}
@@ -342,16 +414,14 @@ class DatabaseManager:
             raw = topic_map[tid]
             parents = [resolved[pid] for pid in raw.parent_ids if pid in resolved]
 
-            # effective_layout
-            if isinstance(raw.layout, Layout):
-                effective_layout: Layout | None = raw.layout
-            elif isinstance(raw.layout, str):
-                effective_layout = layouts.get(raw.layout)
-            else:
-                effective_layout = next(
-                    (p.effective_layout for p in parents if p.effective_layout is not None),
-                    None,
-                )
+            parent_layouts = [p.effective_layout for p in parents]
+            effective_layout = _compute_effective_layout(
+                own=raw.layout,
+                parent_layout=None,
+                topic_layouts=parent_layouts,
+                default_layout=default_layout,
+                named=layouts,
+            )
 
             # effective_tags
             if raw.tags:
@@ -393,14 +463,16 @@ class DatabaseManager:
         layouts: dict[str, Layout],
     ) -> dict[str, ResolvedEvent]:
         resolved: dict[str, ResolvedEvent] = {}
+        default_layout = database.default_layout
         for event in database.events:
             topic = topics.get(event.topic_id) or topics[_DEFAULT_TOPIC_ID]
-            if isinstance(event.layout, Layout):
-                effective_layout: Layout | None = event.layout
-            elif isinstance(event.layout, str):
-                effective_layout = layouts.get(event.layout)
-            else:
-                effective_layout = topic.effective_layout
+            effective_layout = _compute_effective_layout(
+                own=event.layout,
+                parent_layout=None,
+                topic_layouts=[topic.effective_layout],
+                default_layout=default_layout,
+                named=layouts,
+            )
             resolved[event.id] = ResolvedEvent(
                 raw=event, topic=topic, effective_layout=effective_layout
             )
@@ -415,6 +487,7 @@ class DatabaseManager:
     ) -> dict[str, ResolvedTask]:
         task_map = {t.id: t for t in database.tasks}
         resolved: dict[str, ResolvedTask] = {}
+        default_layout = database.default_layout
 
         # Topological order: parents before children
         parent_to_children: dict[str, list[str]] = {t.id: [] for t in database.tasks}
@@ -431,15 +504,20 @@ class DatabaseManager:
             raw = task_map[tid]
             parent = resolved.get(raw.parent_id) if raw.parent_id else None
 
-            # topic resolution
-            if raw.topic_id is not None:
-                topic = topics.get(
-                    raw.topic_id, topics.get(_DEFAULT_TOPIC_ID, next(iter(topics.values())))
-                )
+            # topic resolution: own topic_ids, then inherit from parent, then default
+            if raw.topic_ids:
+                task_topics = [
+                    topics.get(tid_) or topics.get(_DEFAULT_TOPIC_ID) or next(iter(topics.values()))
+                    for tid_ in raw.topic_ids
+                    if tid_ in topics or _DEFAULT_TOPIC_ID in topics
+                ]
+                # filter out None
+                task_topics = [t for t in task_topics if t is not None]
             elif parent is not None:
-                topic = parent.topic
+                task_topics = list(parent.topics)
             else:
-                topic = topics.get(_DEFAULT_TOPIC_ID, next(iter(topics.values())))
+                default_topic = topics.get(_DEFAULT_TOPIC_ID) or next(iter(topics.values()))
+                task_topics = [default_topic]
 
             # effective_tags
             if raw.tags:
@@ -447,38 +525,40 @@ class DatabaseManager:
             elif parent is not None:
                 effective_tags = list(parent.effective_tags)
             else:
-                effective_tags = list(topic.effective_tags)
+                seen_tags: set[str] = set()
+                effective_tags = []
+                for t in task_topics:
+                    for tag in t.effective_tags:
+                        if tag not in seen_tags:
+                            seen_tags.add(tag)
+                            effective_tags.append(tag)
 
-            # effective_layout
-            if isinstance(raw.layout, Layout):
-                effective_layout: Layout | None = raw.layout
-            elif isinstance(raw.layout, str):
-                effective_layout = layouts.get(raw.layout)
-            elif parent is not None and parent.effective_layout is not None:
-                effective_layout = parent.effective_layout
-            else:
-                effective_layout = topic.effective_layout
+            topic_layouts = [t.effective_layout for t in task_topics]
+            effective_layout = _compute_effective_layout(
+                own=raw.layout,
+                parent_layout=parent.effective_layout if parent is not None else None,
+                topic_layouts=topic_layouts,
+                default_layout=default_layout,
+                named=layouts,
+            )
 
             linked_events = [
                 events[lnk.event_id] for lnk in raw.event_links if lnk.event_id in events
             ]
-            blocking_tasks: list[ResolvedTask] = []
-
-            # effective_deadline
             effective_deadline = DatabaseManager._compute_deadline(
                 raw.deadline, raw.event_links, events
             )
 
             rt = ResolvedTask(
                 raw=raw,
-                topic=topic,
+                topics=task_topics,
                 parent=parent,
                 children=[],
                 effective_tags=effective_tags,
                 effective_layout=effective_layout,
                 effective_deadline=effective_deadline,
                 linked_events=linked_events,
-                blocking_tasks=blocking_tasks,
+                related_tasks=[],
             )
             resolved[tid] = rt
             for cid in parent_to_children.get(tid, []):
@@ -486,14 +566,20 @@ class DatabaseManager:
                 if in_degree[cid] == 0:
                     queue.append(cid)
 
-        # Second pass: populate children and blocking_tasks backlinks
+        # Second pass: populate children and related_tasks backlinks
         for rt in resolved.values():
             if rt.parent is not None and rt not in rt.parent.children:
                 rt.parent.children.append(rt)
-            for block in rt.raw.blocked_by:
-                blocker = resolved.get(block.task_id)
-                if blocker is not None and blocker not in rt.blocking_tasks:
-                    rt.blocking_tasks.append(blocker)
+            for rel in rt.raw.relations:
+                target = resolved.get(rel.task_id)
+                if target is not None:
+                    rt.related_tasks.append(
+                        ResolvedTaskRelation(
+                            type=rel.type,
+                            task=target,
+                            description=rel.description,
+                        )
+                    )
 
         return resolved
 

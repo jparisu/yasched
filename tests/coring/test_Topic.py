@@ -2,7 +2,7 @@
 
 import pytest
 
-from yasched.coring.Layout import BackgroundStyle, Layout
+from yasched.coring.Layout import Layout
 from yasched.coring.Topic import Topic
 from yasched.utilizing.coloring.Color import Color
 
@@ -57,8 +57,10 @@ def test_topic_layout_as_string_reference():
 
 
 def test_topic_layout_inline():
-    bg = BackgroundStyle(type="solid", color=Color(r=0.2, g=0.4, b=0.6))
-    layout = Layout(background=bg)
+    from yasched.coring.Layout import SolidBackground
+
+    bg = SolidBackground(color=Color(r=0.2, g=0.4, b=0.6))
+    layout = Layout(backgrounds=[bg])
     t = Topic(id="science", name="Science", layout=layout)
     assert isinstance(t.layout, Layout)
 

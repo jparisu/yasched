@@ -15,7 +15,14 @@ from yasched.backending.interfacing.DatabaseInterface import (
     WeeklyView,
 )
 from yasched.backending.managing.DatabaseManager import DatabaseManager
-from yasched.coring._shared import BlockedBy, EventLink, TaskStatus, Weekday, WeeklyAppointment
+from yasched.coring._shared import (
+    EventLink,
+    RelationType,
+    TaskRelation,
+    TaskStatus,
+    Weekday,
+    WeeklyAppointment,
+)
 from yasched.coring.Event import Event
 from yasched.coring.Layout import Layout
 from yasched.coring.MonthlySchedule import MonthlySchedule
@@ -56,20 +63,21 @@ def _task(
     tags=None,
     parent_id=None,
     event_links=None,
-    blocked_by=None,
+    relations=None,
     schedules=None,
 ):
+    topic_ids = [topic_id] if topic_id is not None else []
     return Task(
         id=id,
         name=name or id,
-        topic_id=topic_id,
+        topic_ids=topic_ids,
         status=status,
         deadline=deadline,
         priority=priority,
         tags=tags or [],
         parent_id=parent_id,
         event_links=event_links or [],
-        blocked_by=blocked_by or [],
+        relations=relations or [],
         schedules=schedules or [],
     )
 
@@ -298,7 +306,7 @@ def test_get_tasks_by_status_done(iface):
 
 def test_get_tasks_by_topic_direct(iface):
     result = iface.get_tasks_by_topic("t1")
-    assert all(t.topic.id == "t1" for t in result)
+    assert all(any(tp.id == "t1" for tp in t.topics) for t in result)
 
 
 def test_get_tasks_by_topic_include_subtopics():
@@ -365,7 +373,9 @@ def test_get_blocked_tasks(iface):
 def test_get_blocking_tasks():
     t1 = _topic("t1")
     blocker = _task("blocker", "t1")
-    blocked = _task("blocked", "t1", blocked_by=[BlockedBy(task_id="blocker")])
+    blocked = _task(
+        "blocked", "t1", relations=[TaskRelation(task_id="blocker", type=RelationType.REQUIRES)]
+    )
     rdb = _build_db(t1, tasks=[blocker, blocked])
     iface = DatabaseInterface(rdb)
     result = iface.get_blocking_tasks("blocked")
@@ -514,7 +524,7 @@ def test_get_stale_blocks():
         "still_blocked",
         "t1",
         status=TaskStatus.BLOCKED,
-        blocked_by=[BlockedBy(task_id="done_blocker")],
+        relations=[TaskRelation(task_id="done_blocker", type=RelationType.REQUIRES)],
     )
     rdb = _build_db(t1, tasks=[blocker, blocked])
     iface = DatabaseInterface(rdb)

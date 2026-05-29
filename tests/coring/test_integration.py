@@ -5,15 +5,23 @@ import datetime
 import pytest
 
 from yasched.coring._shared import (
-    BlockedBy,
     EffortRange,
     EventLink,
+    RelationType,
+    TaskRelation,
     TaskStatus,
     Weekday,
     WeeklyAppointment,
 )
 from yasched.coring.Event import Event
-from yasched.coring.Layout import BackgroundStyle, BorderStyle, IconStyle, Layout
+from yasched.coring.Layout import (
+    BorderStyle,
+    GradientBottomLeftBackground,
+    GradientTopRightBackground,
+    IconStyle,
+    Layout,
+    SolidBackground,
+)
 from yasched.coring.MonthlySchedule import MonthlySchedule
 from yasched.coring.MultiDaySchedule import MultiDaySchedule
 from yasched.coring.SingleDaySchedule import SingleDaySchedule
@@ -43,10 +51,10 @@ def _duration(s: str) -> Duration:
 
 
 def test_topic_with_full_layout():
-    bg = BackgroundStyle(type="solid", color=_color("blue"))
+    bg = SolidBackground(color=_color("blue"))
     border = BorderStyle(type="solid", width="2px", color=_color("black"))
     icon = IconStyle(type="emoji", value="📚")
-    layout = Layout(id="school_theme", background=bg, border=border, icon=icon)
+    layout = Layout(id="school_theme", backgrounds=[bg], border=border, icon=icon)
     topic = Topic(
         id="school",
         name="School",
@@ -54,7 +62,7 @@ def test_topic_with_full_layout():
         layout=layout,
     )
     assert isinstance(topic.layout, Layout)
-    assert topic.layout.background.type == "solid"  # type: ignore[union-attr]
+    assert isinstance(topic.layout.backgrounds[0], SolidBackground)
     assert topic.layout.icon.value == "📚"  # type: ignore[union-attr]
 
 
@@ -115,7 +123,7 @@ def test_event_with_multi_day_schedule():
 
 
 # ---------------------------------------------------------------------------
-# Task + EventLink + BlockedBy composition
+# Task + EventLink + TaskRelation composition
 # ---------------------------------------------------------------------------
 
 
@@ -124,7 +132,7 @@ def test_task_linked_to_event():
     effort = EffortRange(min=_duration("2h"), max=_duration("4h"))
     task = Task(
         id="study_ch3",
-        topic_id="math",
+        topic_ids=["math"],
         name="Study Chapter 3",
         deadline=datetime.date(2026, 6, 10),
         priority=3,
@@ -136,16 +144,18 @@ def test_task_linked_to_event():
 
 
 def test_task_dependency_chain():
-    bb1 = BlockedBy(task_id="study_ch1")
-    bb2 = BlockedBy(task_id="study_ch2", description="Chapter 2 prereq")
+    rel1 = TaskRelation(task_id="study_ch1", type=RelationType.REQUIRES)
+    rel2 = TaskRelation(
+        task_id="study_ch2", type=RelationType.REQUIRES, description="Chapter 2 prereq"
+    )
     task = Task(
         id="study_ch3",
         name="Study Chapter 3",
-        blocked_by=[bb1, bb2],
+        relations=[rel1, rel2],
         status=TaskStatus.BLOCKED,
     )
-    assert len(task.blocked_by) == 2
-    assert task.blocked_by[1].description == "Chapter 2 prereq"
+    assert len(task.relations) == 2
+    assert task.relations[1].description == "Chapter 2 prereq"
     assert task.status == TaskStatus.BLOCKED
 
 
@@ -156,7 +166,7 @@ def test_task_with_recurring_schedule():
         duration=_duration("30m"),
     )
     ws = WeeklySchedule(appointments=[appt])
-    task = Task(id="weekly_review", topic_id="work", name="Weekly Review", schedules=[ws])
+    task = Task(id="weekly_review", topic_ids=["work"], name="Weekly Review", schedules=[ws])
     assert isinstance(task.schedules[0], WeeklySchedule)
     assert task.deadline is None
 
@@ -188,22 +198,36 @@ def test_full_topic_event_task_composition():
     )
 
     link = EventLink(event_id=event.id, use_as_deadline=True)
-    blocked = BlockedBy(task_id="study_ch2")
+    relation = TaskRelation(task_id="study_ch2", type=RelationType.REQUIRES)
     effort = EffortRange(_duration("1h"), _duration("3h"))
     task = Task(
         id="study_ch3",
-        topic_id=topic.id,
+        topic_ids=[topic.id],
         name="Study Chapter 3",
         deadline=datetime.date(2026, 6, 10),
         priority=2,
         effort=effort,
         event_links=[link],
-        blocked_by=[blocked],
+        relations=[relation],
     )
 
-    assert task.topic_id == topic.id
+    assert topic.id in task.topic_ids
     assert task.event_links[0].event_id == event.id
     assert event.topic_id == topic.id
+
+
+# ---------------------------------------------------------------------------
+# Layout: gradient layers from different sources
+# ---------------------------------------------------------------------------
+
+
+def test_layout_gradient_two_layers():
+    tr = GradientTopRightBackground(color=_color("orange"))
+    bl = GradientBottomLeftBackground(color=_color("blue"))
+    layout = Layout(backgrounds=[tr, bl])
+    assert len(layout.backgrounds) == 2
+    assert isinstance(layout.backgrounds[0], GradientTopRightBackground)
+    assert isinstance(layout.backgrounds[1], GradientBottomLeftBackground)
 
 
 # ---------------------------------------------------------------------------
@@ -260,11 +284,13 @@ def test_task_event_links_list_is_frozen_via_dataclass():
 
 def test_color_used_in_layout_used_in_topic():
     red = Color.from_hex("#ff0000")
-    bg = BackgroundStyle(type="solid", color=red)
-    layout = Layout(background=bg)
+    bg = SolidBackground(color=red)
+    layout = Layout(backgrounds=[bg])
     topic = Topic(id="danger", name="Danger Zone", layout=layout)
     assert isinstance(topic.layout, Layout)
-    assert topic.layout.background.color.r == pytest.approx(1.0)  # type: ignore[union-attr]
+    solid = topic.layout.backgrounds[0]  # type: ignore[union-attr]
+    assert isinstance(solid, SolidBackground)
+    assert solid.color.r == pytest.approx(1.0)
 
 
 def test_duration_used_in_effort_used_in_task():

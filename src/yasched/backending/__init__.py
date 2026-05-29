@@ -5,6 +5,7 @@ from yasched.backending.Database import (
     ResolvedDatabase,
     ResolvedEvent,
     ResolvedTask,
+    ResolvedTaskRelation,
     ResolvedTopic,
 )
 from yasched.backending.interfacing.DatabaseInterface import (
@@ -30,6 +31,7 @@ __all__ = [
     "ResolvedTopic",
     "ResolvedEvent",
     "ResolvedTask",
+    "ResolvedTaskRelation",
     "DatabaseLoader",
     "DatabaseParseError",
     "DatabaseManager",

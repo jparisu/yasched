@@ -82,9 +82,22 @@ class EventLink:
     as_context: bool = True
 
 
+class RelationType(enum.Enum):
+    """Semantic type of a directed task-to-task relation.
+
+    Add new members here to extend the set of supported relation types.
+    """
+
+    REQUIRES = "requires"
+    NEEDS = "needs"
+    CONNECTED = "connected"
+    SIMILAR = "similar"
+
+
 @dataclass(frozen=True)
-class BlockedBy:
-    """Dependency declaration: another task that must complete first."""
+class TaskRelation:
+    """Directed relation from this task to another task."""
 
     task_id: str
+    type: RelationType
     description: str | None = None
