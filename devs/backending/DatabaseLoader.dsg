@@ -1,0 +1,247 @@
+# DatabaseLoader, DatabaseParser, DatabaseSerializer
+
+**Files:** `src/yasched/backending/loading/`
+
+These three classes cover the complete I/O cycle for the database:
+loading files into `coring` objects and writing them back to YAML.
+
+---
+
+## DatabaseLoader
+
+**File:** `src/yasched/backending/loading/DatabaseLoader.py`
+
+Public entry point for disk I/O. Delegates parsing and serialization to
+`DatabaseParser` and `DatabaseSerializer`.
+
+```
+DatabaseLoader
+  + {static} load(path: str | Path) -> Database
+  + {static} save(database: Database, path: str | Path) -> None
+```
+
+### `load(path) -> Database`
+
+1. Call `XymlLoader.load(path)` to get the fully-resolved raw Python dict.
+2. Call `DatabaseParser.parse(raw, source_path=Path(path))`.
+3. Return the resulting `Database`.
+
+The path stored in `Database.source_path` is the resolved absolute path.
+
+### `save(database, path) -> None`
+
+1. Call `DatabaseSerializer.serialize(database)` to get a plain dict.
+2. Dump the dict to YAML and write it to `path`.
+
+The saved file is a single flat YAML (no xyml directives). Multi-file layouts
+are not reconstructed — that is intentional; saving produces a canonical single
+file. Future work may add a `save_split()` that reconstructs the xYAML structure.
+
+---
+
+## DatabaseParser
+
+**File:** `src/yasched/backending/loading/DatabaseParser.py`
+
+Converts a plain Python dict (from `XymlLoader`) into a `Database` of typed
+`coring` objects. Raises `DatabaseParseError` (a subclass of `ValueError`) on
+any structure or type mismatch.
+
+```
+DatabaseParser
+  + {static} parse(raw: dict, source_path: Path | None = None) -> Database
+  ~ {static} _parse_layouts(raw_list: list) -> list[Layout]
+  ~ {static} _parse_topics(raw_list: list) -> list[Topic]
+  ~ {static} _parse_events(raw_list: list) -> list[Event]
+  ~ {static} _parse_tasks(raw_list: list) -> list[Task]
+  ~ {static} _parse_layout(raw: dict | str) -> Layout | str
+  ~ {static} _parse_schedule(raw: dict | list) -> list[Schedule]
+  ~ {static} _parse_event_links(raw: list) -> list[EventLink]
+  ~ {static} _parse_blocked_by(raw: list) -> list[BlockedBy]
+```
+
+### Top-level keys
+
+The expected dict shape mirrors the example YAML files:
+
+```
+{
+  "layouts": [...],   # optional; list of layout dicts
+  "topics":  [...],   # optional; list of topic dicts
+  "events":  [...],   # optional; list of event dicts
+  "tasks":   [...],   # optional; list of task dicts
+}
+```
+
+Missing sections default to empty lists. Unknown top-level keys raise
+`DatabaseParseError`.
+
+---
+
+### Layout parsing
+
+A layout dict maps directly to a `Layout` (with nested `BackgroundStyle`,
+`BorderStyle`, `IconStyle`). A bare string is kept as-is (it is an unresolved
+reference to be resolved by `DatabaseManager`).
+
+```yaml
+# inline layout
+background:
+  color: blue
+
+# layout reference (bare string)
+layout: my_layout
+```
+
+---
+
+### Topic parsing
+
+YAML key → `Topic` field mapping:
+
+| YAML key      | `Topic` field   | Notes                                  |
+|---------------|-----------------|----------------------------------------|
+| `id`          | `id`            | required; must be a string             |
+| `name`        | `name`          | required                               |
+| `description` | `description`   | optional                               |
+| `tags`        | `tags`          | optional; list of strings              |
+| `parents`     | `parent_ids`    | optional; list of topic id strings     |
+| `layout`      | `layout`        | optional; dict or str                  |
+
+---
+
+### Event parsing
+
+| YAML key        | `Event` field    | Notes                                             |
+|-----------------|------------------|---------------------------------------------------|
+| `id`            | `id`             | required                                          |
+| `topic`         | `topic_id`       | required string                                   |
+| `name`          | `name`           | required                                          |
+| `description`   | `description`    | optional                                          |
+| `location`      | `location`       | optional string                                   |
+| `schedule`      | `schedules`      | dict or list of dicts; see schedule parsing below |
+| `layout`        | `layout`         | optional; dict or str                             |
+| `blocking_level`| `blocking_level` | optional int                                      |
+
+---
+
+### Task parsing
+
+| YAML key    | `Task` field    | Notes                                                       |
+|-------------|-----------------|-------------------------------------------------------------|
+| `id`        | `id`            | required                                                    |
+| `topic`     | `topic_id`      | optional string                                             |
+| `parent`    | `parent_id`     | optional string                                             |
+| `name`      | `name`          | required                                                    |
+| `description`| `description`  | optional                                                    |
+| `tags`      | `tags`          | optional list                                               |
+| `deadline`  | `deadline`      | optional; parsed via `Date`                                 |
+| `priority`  | `priority`      | optional int ≥ 1                                            |
+| `status`    | `status`        | optional; default `TaskStatus.TODO`                         |
+| `effort`    | `effort`        | optional; dict with `min` and `max` parsed via `Duration`   |
+| `schedule`  | `schedules`     | optional; dict or list of dicts                             |
+| `events`    | `event_links`   | optional; list of strings or structured dicts               |
+| `blocked`   | `blocked_by`    | optional; list of dicts with `by` and optional `description`|
+| `layout`    | `layout`        | optional; dict or str                                       |
+
+---
+
+### Schedule parsing
+
+A `schedule` value can be:
+
+1. **A single dict** — one schedule entry.
+2. **A list of dicts** — multiple schedule entries.
+
+The type is determined by the presence of a `type` key or by structural
+inference:
+
+| Condition                     | Schedule class       |
+|-------------------------------|----------------------|
+| `type: weekly`                | `WeeklySchedule`     |
+| `type: monthly`               | `MonthlySchedule`    |
+| `type: yearly`                | `YearlySchedule`     |
+| has `day` key                 | `SingleDaySchedule`  |
+| has `start_day` + `end_day`   | `MultiDaySchedule`   |
+
+#### WeeklySchedule shorthand
+
+If `week_days` is present (a list of day names) instead of `appointments`, the
+parser expands it:
+
+```yaml
+week_days: [monday, wednesday]
+start_time: "10:00"
+duration: 1h
+```
+
+→ one `WeeklyAppointment` per listed day, all sharing `start_time` and
+  `duration`/`end_time`.
+
+If `appointments` is present instead, each entry is parsed individually.
+
+---
+
+### EventLink parsing
+
+Each element of `events` can be:
+
+- A **bare string**: `"math_exam"` → `EventLink(event_id="math_exam", use_as_deadline=True, as_context=True)`
+- A **dict**: `{id: math_exam, use_as_deadline: false}` → structured form
+
+---
+
+### BlockedBy parsing
+
+Each element of `blocked` must be a dict:
+
+```yaml
+- by: task_id
+  description: "optional reason"
+```
+
+→ `BlockedBy(task_id="task_id", description="optional reason")`
+
+---
+
+### Error handling
+
+`DatabaseParseError` (subclass of `ValueError`) is raised with a descriptive
+message including:
+- The section name (`layouts`, `topics`, etc.)
+- The index or id of the failing entry
+- The specific field that failed
+
+---
+
+## DatabaseSerializer
+
+**File:** `src/yasched/backending/loading/DatabaseSerializer.py`
+
+Converts a `Database` (containing `coring` objects) back to a plain Python dict
+suitable for YAML serialization.
+
+```
+DatabaseSerializer
+  + {static} serialize(database: Database) -> dict
+  + {static} to_yaml(database: Database) -> str
+  ~ {static} _serialize_layout(layout: Layout | str) -> dict | str
+  ~ {static} _serialize_topic(topic: Topic) -> dict
+  ~ {static} _serialize_event(event: Event) -> dict
+  ~ {static} _serialize_task(task: Task) -> dict
+  ~ {static} _serialize_schedule(schedule: Schedule) -> dict
+  ~ {static} _serialize_event_link(link: EventLink) -> str | dict
+  ~ {static} _serialize_blocked_by(b: BlockedBy) -> dict
+```
+
+### Serialization rules
+
+- The output round-trips cleanly: `parse(serialize(db))` produces an equivalent
+  `Database`.
+- `EventLink` with both flags `True` is serialized as a bare string (shorthand).
+- `WeeklySchedule` with identical `start_time`/`duration` across all appointments
+  is serialized using the `week_days` shorthand.
+- `Layout | str` fields: a `str` value is kept as-is; a `Layout` is serialized
+  to its dict representation.
+- `Date`, `Time`, `Duration` objects are serialized to their canonical string
+  form (ISO-8601 for dates/times, human-readable for durations).

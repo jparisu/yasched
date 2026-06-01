@@ -1,0 +1,33 @@
+# XymlKeyBehavior
+
+**File:** `src/yasched/utilizing/xyml/XymlKeyBehavior.py`
+
+An enum that describes what the loader does when it encounters a directive key
+inside a YAML mapping.
+
+---
+
+## Members
+
+| Member    | Value | Description                                                                                                                                          |
+|-----------|-------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `REPLACE` | `1`   | The entire mapping node that contains the directive key is discarded and replaced by the content of the referenced file. No sibling keys are allowed. |
+| `EXTEND`  | `2`   | The content of the referenced file is used as the base mapping. Keys present in the current mapping override keys from the file (shallow merge).     |
+
+---
+
+## Interface
+
+```
+XymlKeyBehavior  (enum.Enum)
+  REPLACE = 1
+  EXTEND  = 2
+```
+
+---
+
+## Notes
+
+- This is a pure enum with no methods. Logic is in `XymlLoader`.
+- New behaviours can be added here in the future; `XymlKeyRegistry` and
+  `XymlLoader` would need corresponding updates.

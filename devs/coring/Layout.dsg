@@ -1,0 +1,128 @@
+# Layout
+
+**File:** `src/yasched/coring/Layout.py`
+
+Visual style applied to a topic, event, or task. All sub-classes (`BackgroundStyle`,
+`BorderStyle`, `IconStyle`) live in the same file because they have no independent
+identity outside of a `Layout`.
+
+A `Layout` may be defined inline or referenced by id. The `layout` field on
+`Topic`, `Event`, and `Task` is typed `Layout | str | None`:
+- `str` — unresolved reference to a named layout id; resolved by `backending`.
+- `Layout` — inline definition.
+- `None` — no layout override; inherit from parent/topic.
+
+---
+
+## BackgroundStyle
+
+Background fill of the element.
+
+### Fields
+
+| Field    | Type                   | Description                                      |
+|----------|------------------------|--------------------------------------------------|
+| `type`   | `str`                  | `"solid"` or `"gradient"`                        |
+| `color`  | `Color \| None`        | Single color (used when `type` is `"solid"`)     |
+| `colors` | `list[Color] \| None`  | Color stops (used when `type` is `"gradient"`)   |
+
+### Interface
+
+```
+BackgroundStyle
+  + type: str
+  + color: Color | None
+  + colors: list[Color] | None
+```
+
+### Notes
+
+- Frozen dataclass.
+- No cross-field validation at this layer; `backending` enforces that `"solid"`
+  has `color` and `"gradient"` has `colors`.
+
+---
+
+## BorderStyle
+
+Border drawn around the element.
+
+### Fields
+
+| Field   | Type    | Description                            |
+|---------|---------|----------------------------------------|
+| `type`  | `str`   | `"solid"` (only value defined so far)  |
+| `width` | `str`   | CSS-style width string, e.g. `"2px"`   |
+| `color` | `Color` | Border color                           |
+
+### Interface
+
+```
+BorderStyle
+  + type: str
+  + width: str
+  + color: Color
+```
+
+### Notes
+
+- Frozen dataclass.
+
+---
+
+## IconStyle
+
+Icon decoration shown on the element.
+
+### Fields
+
+| Field   | Type  | Description                            |
+|---------|-------|----------------------------------------|
+| `type`  | `str` | `"emoji"` or `"image"`                 |
+| `value` | `str` | Emoji character or image path/URL      |
+
+### Interface
+
+```
+IconStyle
+  + type: str
+  + value: str
+```
+
+### Notes
+
+- Frozen dataclass.
+- No URL validation; `backending` or `frontending` resolves image paths.
+
+---
+
+## Layout
+
+Container for the three optional style sub-objects. May carry an `id` when
+defined as a named layout in the YAML configuration.
+
+### Fields
+
+| Field        | Type                      | Description                              |
+|--------------|---------------------------|------------------------------------------|
+| `id`         | `str \| None`             | Set when the layout is named; `None` for inline anonymous layouts |
+| `background` | `BackgroundStyle \| None` | Background fill style                    |
+| `border`     | `BorderStyle \| None`     | Border style                             |
+| `icon`       | `IconStyle \| None`       | Icon decoration style                    |
+
+### Interface
+
+```
+Layout
+  + id: str | None
+  + background: BackgroundStyle | None
+  + border: BorderStyle | None
+  + icon: IconStyle | None
+```
+
+### Notes
+
+- Frozen dataclass.
+- All sub-objects are optional; an empty `Layout` (all `None`) is valid as a
+  placeholder.
+- Reference resolution (`str` → `Layout`) is done by `backending`, not here.

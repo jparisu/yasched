@@ -1,0 +1,67 @@
+# Topic
+
+**File:** `src/yasched/coring/Topic.py`
+
+An organizational category that groups related events and tasks. Topics form a
+directed acyclic graph (DAG) via `parent_ids`. Tag and layout inheritance from
+parents is resolved by `backending`, not here.
+
+---
+
+## YAML form accepted
+
+```yaml
+topics:
+  - id: math
+    name: Mathematics
+    description: "All math-related events and tasks"
+    tags: [school, academic]
+    parent_ids: [studies]
+    layout:
+      background:
+        type: solid
+        color: "#3498db"
+```
+
+---
+
+## Fields
+
+| Field         | Type                    | Required | Description                                          |
+|---------------|-------------------------|----------|------------------------------------------------------|
+| `id`          | `str`                   | yes      | Unique identifier used to reference this topic       |
+| `name`        | `str`                   | yes      | Human-readable display name                          |
+| `description` | `str \| None`           | no       | Optional longer description                          |
+| `tags`        | `list[str]`             | no       | Empty list if omitted; inherited by child topics and tasks |
+| `parent_ids`  | `list[str]`             | no       | IDs of parent topics; empty list if omitted          |
+| `layout`      | `Layout \| str \| None` | no       | Inline layout or reference to a named layout id      |
+
+---
+
+## Interface
+
+```
+Topic
+  + id: str
+  + name: str
+  + description: str | None
+  + tags: list[str]
+  + parent_ids: list[str]
+  + layout: Layout | str | None
+```
+
+---
+
+## Notes
+
+- Frozen dataclass.
+- `id` uniqueness across all topics in a configuration is enforced by
+  `backending`, not here.
+- `parent_ids` stores raw string references; the DAG is assembled by
+  `backending`. Cycles are detected there too.
+- `layout` typed as `Layout | str | None`:
+  - `str` — unresolved reference to a named layout id.
+  - `Layout` — inline definition.
+  - `None` — no layout for this topic.
+- `tags` defaults to `[]` (not `None`) so callers can safely iterate without
+  a `None`-check.

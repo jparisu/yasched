@@ -1,0 +1,179 @@
+@startuml coring
+
+' ── Utilities (external) ─────────────────────────────────────
+package utilizing {
+  class Color
+  class Duration
+}
+
+' ── Coring ───────────────────────────────────────────────────
+package coring {
+
+  ' ── Layout ─────────────────────────────────────────────────
+  class BackgroundStyle {
+    + type: str
+    + color: Color
+    + colors: list[Color]
+  }
+
+  class BorderStyle {
+    + type: str
+    + width: str
+    + color: Color
+  }
+
+  class IconStyle {
+    + type: str
+    + value: str
+  }
+
+  class Layout {
+    + id: str
+    + background: BackgroundStyle
+    + border: BorderStyle
+    + icon: IconStyle
+  }
+
+  Layout *-- BackgroundStyle
+  Layout *-- BorderStyle
+  Layout *-- IconStyle
+  BackgroundStyle --> Color
+  BorderStyle --> Color
+
+  ' ── Schedule ────────────────────────────────────────────────
+  class Schedule
+
+  class WeeklyAppointment {
+    + week_day: Weekday
+    + start_time: time
+    + end_time: time
+    + duration: Duration
+  }
+
+  class WeeklySchedule {
+    + appointments: list[WeeklyAppointment]
+    + start_date: date
+    + end_date: date
+  }
+
+  class MonthlySchedule {
+    + day_of_month: int
+    + start_time: time
+    + duration: Duration
+    + start_date: date
+    + end_date: date
+  }
+
+  class YearlySchedule {
+    + month: int
+    + day: int
+  }
+
+  class SingleDaySchedule {
+    + day: date
+    + start_time: time
+    + duration: Duration
+  }
+
+  class MultiDaySchedule {
+    + start_day: date
+    + end_day: date
+  }
+
+  Schedule <|-- WeeklySchedule
+  Schedule <|-- MonthlySchedule
+  Schedule <|-- YearlySchedule
+  Schedule <|-- SingleDaySchedule
+  Schedule <|-- MultiDaySchedule
+  WeeklySchedule *-- WeeklyAppointment
+  WeeklyAppointment --> Duration
+  MonthlySchedule --> Duration
+
+  ' ── Support types ────────────────────────────────────────────
+  enum Weekday {
+    MONDAY
+    TUESDAY
+    WEDNESDAY
+    THURSDAY
+    FRIDAY
+    SATURDAY
+    SUNDAY
+  }
+
+  enum TaskStatus {
+    TODO
+    IN_PROGRESS
+    DONE
+    CANCELLED
+    BLOCKED
+  }
+
+  class EffortRange {
+    + min: Duration
+    + max: Duration
+  }
+
+  class EventLink {
+    + event_id: str
+    + use_as_deadline: bool
+    + as_context: bool
+  }
+
+  class BlockedBy {
+    + task_id: str
+    + description: str
+  }
+
+  EffortRange --> Duration
+
+  ' ── Domain entities ──────────────────────────────────────────
+  class Topic {
+    + id: str
+    + name: str
+    + description: str
+    + tags: list[str]
+    + parent_ids: list[str]
+    + layout: Layout | str
+  }
+
+  class Event {
+    + id: str
+    + topic_id: str
+    + name: str
+    + description: str
+    + location: str
+    + schedules: list[Schedule]
+    + layout: Layout | str
+    + blocking_level: int
+  }
+
+  class Task {
+    + id: str
+    + topic_id: str
+    + parent_id: str
+    + name: str
+    + description: str
+    + tags: list[str]
+    + deadline: date
+    + priority: int
+    + status: TaskStatus
+    + effort: EffortRange
+    + schedules: list[Schedule]
+    + event_links: list[EventLink]
+    + blocked_by: list[BlockedBy]
+    + layout: Layout | str
+  }
+
+  Topic --> Layout
+  Event --> Layout
+  Event --> Schedule
+  Task --> Layout
+  Task --> Schedule
+  Task --> TaskStatus
+  Task --> EffortRange
+  Task --> EventLink
+  Task --> BlockedBy
+  WeeklyAppointment --> Weekday
+}
+
+@enduml

@@ -1,0 +1,26 @@
+# My YAML Scheduler
+
+`yasched` is a python package that implements a full application to schedule tasks and events using YAML files.
+It is designed for flexible and simple use, allowing human-readable format as visual interfaces.
+
+## Modules
+
+### utilizing
+
+The `utilizing` module provides utility functions to be used across the library.
+For instance: YAML parsing, date and time handling, color manipulation, etc.
+
+### coring
+
+The `coring` module contains the core data structures and logic for representing and managing schedules.
+It defines the main classes for topics, tasks, events, layouts, and their relationships.
+
+### backending
+
+The `backending` module contains the core logic for scheduling tasks and events.
+It stores information and provides a flexible API to retrieve and manipulate it.
+
+### frontending
+
+The `frontending` module provides user-facing interfaces to interact with the scheduling system.
+The main interface is a web application for simple and visual management of schedules.

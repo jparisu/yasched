@@ -1,0 +1,72 @@
+# SingleDaySchedule
+
+**File:** `src/yasched/coring/SingleDaySchedule.py`
+
+A one-off occurrence on a specific calendar date. Optionally timed (with a
+`start_time`) or all-day (no `start_time`). Optionally bounded (with a
+`duration`) or open-ended (no `duration`).
+
+Inherits from `Schedule`.
+
+---
+
+## YAML forms accepted
+
+### All-day event
+
+```yaml
+schedule:
+  type: single_day
+  day: "2026-06-15"
+```
+
+### Timed event with duration
+
+```yaml
+schedule:
+  type: single_day
+  day: "2026-06-15"
+  start_time: "14:00"
+  duration: 2h
+```
+
+### Timed event with open end
+
+```yaml
+schedule:
+  type: single_day
+  day: "2026-06-15"
+  start_time: "14:00"
+```
+
+---
+
+## Fields
+
+| Field        | Type                    | Required | Description                                   |
+|--------------|-------------------------|----------|-----------------------------------------------|
+| `day`        | `datetime.date`         | yes      | The date of the occurrence                    |
+| `start_time` | `datetime.time \| None` | no       | Start time; `None` means all-day              |
+| `duration`   | `Duration \| None`      | no       | Duration; `None` means open-ended             |
+
+---
+
+## Interface
+
+```
+SingleDaySchedule(Schedule)
+  + day: datetime.date
+  + start_time: datetime.time | None
+  + duration: Duration | None
+```
+
+---
+
+## Notes
+
+- Frozen dataclass.
+- No constraint is enforced on the combination of `start_time` and `duration`:
+  both, either, or neither may be set. Semantic rules (e.g. all-day events
+  should not have a duration) belong in `backending`.
+- `duration` being `None` does not imply the event lasts all day; it merely
+  means no end time was specified.

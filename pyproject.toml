@@ -1,133 +1,139 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
 
 [project]
 name = "yasched"
-version = "0.1.0"
-description = "Scheduler for agenda and tasks orchestration via YAML"
+version = "2.0.0"
+description = "Version 2.0 of the My Yaml Scheduler project"
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "MIT"}
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
 authors = [
-    {name = "jparisu", email = "javier.paris.u@gmail.com"},
+  { name = "jparisu", email = "javier.paris.u@gmail.com" },
 ]
-keywords = ["scheduler", "yaml", "tasks", "orchestration", "streamlit"]
+keywords = []
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.12",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
 ]
-
 dependencies = [
-    "streamlit>=1.28.0",
-    "pyyaml>=6.0",
-    "python-dateutil>=2.8.0",
-    "schedule>=1.2.0",
+  "PyYAML>=6.0",
+
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "codespell>=2.2.0",
-    "types-PyYAML>=6.0.0",
-    "types-python-dateutil>=2.8.0",
-]
-test = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-]
-lint = [
-    "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "codespell>=2.2.0",
-]
-docs = [
-    "mkdocs>=1.5.0",
-    "mkdocs-material>=9.4.0",
-    "mkdocstrings[python]>=0.24.0",
-    "mkdocs-awesome-pages-plugin>=2.10.1",
-]
+[project.scripts]
+yasched = "apps.cli.yasched_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/jparisu/yasched"
-Documentation = "https://jparisu.github.io/yasched"
 Repository = "https://github.com/jparisu/yasched"
 Issues = "https://github.com/jparisu/yasched/issues"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
-exclude = ["tests*", "docs*"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test_*"]
-python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "-ra",
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2.2",
+  "codespell>=2.4.1",
+  "coverage[toml]>=7.8.0",
+  "mkdocs>=1.6.0",
+  "mkdocs-include-markdown-plugin>=7.0.0",
+  "mkdocs-material>=9.6.0",
+  "mkdocstrings[python]>=0.30.0",
+  "mypy>=1.15.0",
+  "pre-commit>=4.2.0",
+  "pytest>=8.3.0",
+  "pytest-cov>=6.1.0",
+  "ruff>=0.11.0",
+  "twine>=6.1.0",
+  "types-PyYAML",
+]
+docs = [
+  "mkdocs>=1.6.0",
+  "mkdocs-include-markdown-plugin>=7.0.0",
+  "mkdocs-material>=9.6.0",
+  "mkdocstrings[python]>=0.30.0",
+]
+lint = [
+  "codespell>=2.4.1",
+  "mypy>=1.15.0",
+  "ruff>=0.11.0",
+  "types-PyYAML",
+]
+test = [
+  "pytest>=8.3.0",
+  "pytest-cov>=6.1.0",
+]
+frontend = [
+  "reflex>=0.6.0",
+]
+api = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.34.0",
+  "pydantic>=2.0.0",
 ]
 
-[tool.coverage.run]
-source = ["lpdp"]
-branch = true
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
-]
+[tool.hatch.build.targets.wheel]
+packages = ["src/yasched", "apps"]
 
 [tool.ruff]
-target-version = "py39"
-line-length = 120
-indent-width = 4
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
+  "E",
+  "F",
+  "I",
+  "UP",
+  "B",
 ]
 ignore = [
-    "E501",  # line too long, handled by formatter
+  "UP046",
+  "UP047",
+  "B024",
 ]
 
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.Query",
+  "fastapi.Header",
+  "fastapi.Body",
+  "fastapi.File",
+  "fastapi.Form",
+  "fastapi.Cookie",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.mypy]
-python_version = "3.9"
-warn_return_any = true
+python_version = "3.12"
+strict = true
 warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-strict_equality = true
+mypy_path = "src"
+packages = ["yasched"]
 
 [[tool.mypy.overrides]]
-module = "src.*"
-ignore_missing_imports = true
+module = "yasched.frontending.*"
+ignore_errors = true
 
-[tool.codespell]
-skip = '*.lock,.git,*.egg-info,build,dist'
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["yasched"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

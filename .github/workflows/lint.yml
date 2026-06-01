@@ -1,79 +1,35 @@
-name: Soft checks
+name: Lint
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   lint:
-    name: Test Python
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[lint]"
+      - name: Install dependencies
+        run: |
+          # Upgrade pip first to keep dependency resolution stable.
+          python -m pip install --upgrade pip
+          # Install the project with the tool versions used by local checks.
+          python -m pip install -e ".[dev]"
 
-    - name: Lint with ruff
-      run: |
-        ruff check src/ tests/
-
-    - name: Format check with ruff
-      run: |
-        ruff format --check src/ tests/
-
-
-  types:
-    name: Test Python
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[lint]"
-
-    - name: Type check with mypy
-      run: |
-        mypy src/
-
-
-  spell-checker:
-    name: Test Python
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[lint]"
-
-    - name: Spell check (codespell)
-      run: codespell spelling/.codespellrc .
+      - name: Run pre-commit
+        run: |
+          # Run the same local quality gate used before commits.
+          pre-commit run --all-files

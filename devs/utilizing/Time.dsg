@@ -1,0 +1,63 @@
+# Time
+
+**File:** `src/yasched/utilizing/Time.py`
+
+A time of day (hour, minute, optional second). Wraps `datetime.time` internally.
+Accepts 24-hour and 12-hour string formats on input; always serializes to
+`HH:MM` (24-hour, no seconds unless non-zero).
+
+---
+
+## YAML forms accepted
+
+```yaml
+time: "10:00"       # HH:MM — canonical (24-hour)
+time: "10:00:30"    # HH:MM:SS (24-hour with seconds)
+time: "10am"        # 12-hour, no minutes
+time: "10:30am"     # 12-hour with minutes
+time: "10:30 AM"    # 12-hour with space and uppercase
+time: "22:45"       # 24-hour afternoon
+```
+
+---
+
+## Fields
+
+| Field   | Type            | Description                       |
+|---------|-----------------|-----------------------------------|
+| `value` | `datetime.time` | Canonical internal representation |
+
+---
+
+## Interface
+
+```
+Time
+  + value: datetime.time
+  --
+  + {static} from_string(s: str) -> Time
+  + {static} now() -> Time
+  + to_hhmm() -> str                    # "HH:MM" (canonical)
+  + to_hhmmss() -> str                  # "HH:MM:SS"
+  + hour() -> int
+  + minute() -> int
+  + second() -> int
+  + __str__() -> str                    # same as to_hhmm()
+  + __lt__(other: Time) -> bool
+  + __eq__(other: Time) -> bool
+  + __add__(duration: Duration) -> Time
+  + __sub__(other: Time) -> Duration
+```
+
+---
+
+## Notes
+
+- Frozen dataclass.
+- `from_string` is case-insensitive for am/pm suffixes.
+- `__add__` wraps around midnight (e.g. `22:00 + 3h = 01:00`). If the
+  caller needs to detect day overflow, it should use `datetime` arithmetic
+  directly.
+- `__sub__` returns the absolute difference between two `Time` values as a
+  `Duration`. It does not account for day boundaries — use `datetime` for that.
+- Canonical output `to_hhmm()` omits seconds when they are zero.

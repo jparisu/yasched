@@ -1,126 +1,119 @@
 # yasched
 
-[![Docs](https://readthedocs.org/projects/yasched/badge/?version=latest)](https://yasched.readthedocs.io/en/latest/?badge=latest)
-[![CI](https://github.com/jparisu/yasched/actions/workflows/ci.yml/badge.svg)](https://github.com/jparisu/yasched/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/jparisu/yasched/branch/main/graph/badge.svg)](https://codecov.io/gh/jparisu/yasched)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/jparisu/yasched/blob/main/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+`yasched` is a YAML-based personal scheduler. Define tasks, events, and topics
+in plain YAML files and query or visualise them through a CLI or a Streamlit UI.
 
+## Installation
 
-**yasched** - Scheduler for agenda and tasks orchestration via YAML
-
-A simple yet powerful task scheduler that allows you to define and manage scheduled tasks using YAML configuration files, with a beautiful Streamlit-based web interface.
-
-## ✨ Features
-
-- 📝 **YAML-based Configuration**: Define tasks in simple, readable YAML format
-- ⏰ **Flexible Scheduling**: Support for various schedule patterns (seconds, minutes, hours, days, weeks)
-- 🎯 **Action System**: Predefined actions (print, log) with extensibility for custom actions
-- 🖥️ **Web Interface**: Beautiful Streamlit-based UI for managing tasks
-- 📊 **Monitoring**: Track task execution history and statistics
-- 🐍 **Python API**: Programmatic access to scheduler functionality
-- 🔧 **Daemon Mode**: Run as a background service with management scripts
-
-## 🚀 Quick Start
-
-### Installation
+From a local checkout (with venv already activated):
 
 ```bash
-pip install yasched
+make install-current
 ```
 
-Or install from source:
+For a full development setup (creates `.venv`):
 
 ```bash
-git clone https://github.com/jparisu/yasched.git
-cd yasched
-pip install -e .
+make install
+source .venv/bin/activate
 ```
 
-
-### Using YAML Configuration
-
-Create a `config.yaml` file:
-
-```yaml
-tasks:
-  - name: morning_greeting
-    description: Print a morning greeting
-    schedule: every day at 08:00
-    action: print
-    enabled: true
-    parameters:
-      message: "Good morning! Time to start the day."
-
-  - name: hourly_check
-    description: Hourly status check
-    schedule: every 1 hour
-    action: log
-    enabled: true
-    parameters:
-      message: "Hourly check complete"
-      level: info
-```
-
-Load and run:
-
-```python
-from yasched.utils import create_scheduler_from_config
-
-scheduler = create_scheduler_from_config("config.yaml")
-scheduler.run()
-```
-
-## 📖 Documentation
-
-Full documentation is available at [https://jparisu.github.io/yasched](https://jparisu.github.io/yasched)
-
-- [Installation Guide](docs/getting-started/installation.md)
-- [Quick Start](docs/getting-started/quickstart.md)
-- [Configuration](docs/getting-started/configuration.md)
-- [User Guide](docs/user-guide/tasks.md)
-
-## 🛠️ Development
-
-### Setup Development Environment
+For the Streamlit frontend, also install the optional frontend dependency:
 
 ```bash
-git clone https://github.com/jparisu/yasched.git
-cd yasched
-pip install -e ".[dev,docs]"
+pip install -e ".[frontend]"
 ```
 
-### Run Tests
+## Apps
+
+### CLI — `yasched`
+
+A command-line interface for querying the database.
 
 ```bash
-pytest
+yasched --db path/to/main.yaml <group> <command> [options]
 ```
 
-### Run Linters
+Quick reference:
+
+| Command | Description |
+|---|---|
+| `db validate` | Validate the database and report any errors |
+| `db info` | Summary statistics (entity counts, task status breakdown) |
+| `schedule daily [DATE]` | Daily schedule view (default: today) |
+| `schedule weekly [DATE]` | Weekly schedule view |
+| `schedule range START END` | Events and tasks between two ISO dates |
+| `tasks list [--status] [--topic] [--tag] [--priority-min/max]` | List tasks with optional filters |
+| `tasks show TASK_ID` | Full detail for one task |
+| `tasks search QUERY` | Substring search on name and description |
+| `tasks deadlines [--days N]` | Upcoming deadlines (default: 7 days) |
+| `tasks overdue` | Tasks past their deadline |
+| `tasks blocked` | Tasks in BLOCKED status |
+| `events list` | List all events |
+| `events show EVENT_ID` | Full detail for one event |
+| `events range START END` | Events in a date range |
+| `topics list` | Topic hierarchy as an indented tree |
+| `topics show TOPIC_ID` | Topic detail with children and task count |
+| `check conflicts [--start] [--end]` | Detect overlapping events |
+| `check stale-links` | Tasks still linked to already-ended events |
+| `check stale-blocks` | Tasks blocked by tasks that are already done |
+| `check all` | Run all checks at once |
+
+Example:
 
 ```bash
-ruff check .        # Linting
-ruff format .       # Formatting
-mypy yasched app    # Type checking
-codespell           # Spell checking
+DB=resources/basic_example/basic_example_main.yaml
+
+yasched --db $DB db info
+yasched --db $DB tasks list --status todo
+yasched --db $DB tasks deadlines --days 30
+yasched --db $DB schedule daily 2026-01-15
+yasched --db $DB check all
 ```
 
-### Build Documentation
+---
+
+### Streamlit UI
+
+A browser-based proof-of-concept frontend with three tabs:
+
+- **MAIN** — database overview: validation status, entity counts, task status
+  breakdown, and topic tree.
+- **TASKS** — Kanban board with one column per task status; cards are styled
+  with the colours defined in their layout.
+- **EVENTS** — Monthly calendar with coloured event badges; hover over a badge
+  to see the event name, location, and description.
+
+Run with:
 
 ```bash
-mkdocs serve
+make streamlit
 ```
 
-## 🤝 Contributing
+Or directly:
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+```bash
+streamlit run apps/streamlit/yasched_streamlit.py
+```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Then open the URL printed by Streamlit (usually `http://localhost:8501`), enter
+the path to your YAML file in the sidebar, and click **Load**.
 
-## 📄 License
+Example database path to try:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```
+resources/basic_example/basic_example_main.yaml
+```
+
+## Development
+
+```bash
+make lint       # ruff + mypy
+make format     # auto-fix formatting
+make test       # pytest
+make docs       # build MkDocs site
+```
+
+## License
+
+Licensed under the Apache 2.0 License.

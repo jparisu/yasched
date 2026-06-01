@@ -1,0 +1,21 @@
+# Sample yasched configuration file
+# This demonstrates various layouts configurations
+
+- id: my_layout
+  background:
+    - type: gradient_tr
+      color: lightgreen
+    - type: gradient_bl
+      color: white
+  border:
+    type: solid
+    width: 2px
+    color: darkgreen
+
+- id: important
+  background:
+    type: solid
+    color: red
+  icon:
+    type: emoji
+    value: "⚠️"
