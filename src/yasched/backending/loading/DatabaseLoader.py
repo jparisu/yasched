@@ -29,3 +29,5 @@ class DatabaseLoader:
 
         content = DatabaseSerializer.to_yaml(database)
         Path(path).write_text(content, encoding="utf-8")
+
+        # TODO: allow saving back to multi-file xYAML (__ext__ layout).

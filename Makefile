@@ -1,4 +1,5 @@
-.PHONY: venv install install-current ensure-git precommit lint format test docs build clean streamlit
+.PHONY: venv install install-current ensure-git precommit lint format test docs build clean streamlit \
+        install-api api kill-api install-web web
 
 VENV ?= .venv
 PYTHON ?= python3
@@ -13,6 +14,13 @@ VENV_MYPY := $(VENV)/bin/mypy
 VENV_PYTEST := $(VENV)/bin/pytest
 VENV_MKDOCS := $(VENV)/bin/mkdocs
 VENV_BUILD := $(VENV)/bin/python -m build
+VENV_UVICORN := $(VENV)/bin/uvicorn
+
+WEB_DIR := apps/web
+
+DB_PATH ?= resources/basic_example/basic_example_main.yaml
+API_HOST ?= 127.0.0.1
+API_PORT ?= 8000
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -54,6 +62,31 @@ test-all: lint format test docs
 streamlit:
 	pip install -e ".[frontend]" -q
 	streamlit run apps/streamlit/yasched_streamlit.py
+
+# ---------------------------------------------------------------------------
+# API (FastAPI backend)
+# ---------------------------------------------------------------------------
+
+install-api: venv
+	$(VENV_PIP) install -e ".[api]"
+
+api: install-api
+	-lsof -ti:$(API_PORT) | xargs kill -9 2>/dev/null; true
+	YASCHED_DB_PATH=$(DB_PATH) $(VENV_UVICORN) apps.api.main:app \
+		--host $(API_HOST) --port $(API_PORT) --reload
+
+kill-api:
+	-lsof -ti:$(API_PORT) | xargs kill -9 2>/dev/null; true
+
+# ---------------------------------------------------------------------------
+# Web frontend (React + Vite)
+# ---------------------------------------------------------------------------
+
+install-web:
+	cd $(WEB_DIR) && npm install
+
+web: install-web
+	cd $(WEB_DIR) && npm run dev
 
 clean:
 	rm -rf build dist .coverage .pytest_cache .mypy_cache .ruff_cache site

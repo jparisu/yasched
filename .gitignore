@@ -209,3 +209,10 @@ __marimo__/
 # Agents
 .claude/
 .agents/
+
+# Frontend
+apps/web/node_modules/
+apps/web/dist/
+
+# Temporal files
+tmp/

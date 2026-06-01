@@ -1,4 +1,4 @@
-"""Tests for coring.Layout: background types, BorderStyle, IconStyle, ShapeStyle, PinStyle, Layout."""
+"""Tests for coring.Layout: background types, border, icon, shape, pin."""
 
 import pytest
 

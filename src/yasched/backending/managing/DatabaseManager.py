@@ -527,13 +527,13 @@ class DatabaseManager:
             else:
                 seen_tags: set[str] = set()
                 effective_tags = []
-                for t in task_topics:
-                    for tag in t.effective_tags:
+                for tp in task_topics:
+                    for tag in tp.effective_tags:
                         if tag not in seen_tags:
                             seen_tags.add(tag)
                             effective_tags.append(tag)
 
-            topic_layouts = [t.effective_layout for t in task_topics]
+            topic_layouts = [tp.effective_layout for tp in task_topics]
             effective_layout = _compute_effective_layout(
                 own=raw.layout,
                 parent_layout=parent.effective_layout if parent is not None else None,
