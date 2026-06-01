@@ -1,4 +1,4 @@
-.PHONY: venv install install-current ensure-git precommit lint format test docs build clean streamlit
+.PHONY: venv install install-current install-frontend ensure-git precommit lint format test docs build clean streamlit web
 
 VENV ?= .venv
 PYTHON ?= python3
@@ -51,9 +51,15 @@ build:
 
 test-all: lint format test docs
 
+install-frontend: venv
+	$(VENV_PIP) install -e ".[frontend]"
+
+web: install-frontend
+	cd apps/web && $(CURDIR)/$(VENV)/bin/reflex run
+
 streamlit:
-	pip install -e ".[frontend]" -q
-	streamlit run apps/streamlit/yasched_streamlit.py
+	$(VENV_PIP) install streamlit -q
+	$(VENV)/bin/streamlit run apps/streamlit/yasched_streamlit.py
 
 clean:
 	rm -rf build dist .coverage .pytest_cache .mypy_cache .ruff_cache site
