@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "./ui/utils";
-import { LayoutDashboard, CalendarDays, X } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Network, CalendarRange, KanbanSquare, CalendarIcon, X } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -16,7 +16,30 @@ const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
     description: "Overview & status",
   },
-  // Future tabs added here
+  {
+    id: "topics",
+    name: "Topics",
+    icon: Network,
+    description: "Hierarchy graph",
+  },
+  {
+    id: "agenda",
+    name: "Agenda",
+    icon: CalendarRange,
+    description: "Weekly planner",
+  },
+  {
+    id: "tasks",
+    name: "Tasks",
+    icon: KanbanSquare,
+    description: "Kanban board",
+  },
+  {
+    id: "calendar",
+    name: "Calendar",
+    icon: CalendarIcon,
+    description: "Schedule views",
+  },
 ];
 
 interface SidebarProps {
