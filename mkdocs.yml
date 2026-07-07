@@ -35,11 +35,6 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Getting Started: getting-started.md
-  - Development: development.md
-  - Changelog: changelog.md
-  - API: api/index.md
 
 extra:
   social:

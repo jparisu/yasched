@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yasched"
-version = "2.0.0"
-description = "Version 2.0 of the My Yaml Scheduler project"
+version = "3.0.0"
+description = "Version 3.0 of the My Yaml Scheduler project"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -26,8 +26,9 @@ dependencies = [
 
 ]
 
-[project.scripts]
-yasched = "apps.cli.yasched_cli:main"
+# CLI entry point removed with the v2 apps; restore once the v3.0 CLI exists.
+# [project.scripts]
+# yasched = "apps.cli.yasched_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/jparisu/yasched"
@@ -79,7 +80,7 @@ api = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/yasched", "apps"]
+packages = ["src/yasched"]
 
 [tool.ruff]
 line-length = 100
@@ -121,10 +122,6 @@ strict = true
 warn_unused_configs = true
 mypy_path = "src"
 packages = ["yasched"]
-
-[[tool.mypy.overrides]]
-module = "yasched.frontending.*"
-ignore_errors = true
 
 [tool.pytest.ini_options]
 addopts = "-ra"

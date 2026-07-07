@@ -1,17 +1,8 @@
-# My Yaml Scheduler
+# My Yaml Scheduler (yasched)
 
-Welcome to the documentation for `My Yaml Scheduler` 2.0, the current version
-of the original project.
+Version 3.0 is under active development. The v2 domain, apps, and documentation
+have been removed to make way for a redesigned core. Documentation pages will be
+rebuilt as the v3.0 API stabilizes.
 
-## What this project contains
-
-- Python package: `yasched`
-- Minimum Python version: `3.12`
-- Maintainer: `jparisu <javier.paris.u@gmail.com>`
-
-
-## Next steps
-
-- Start with the [installation guide](installation.md)
-- Follow the [getting started guide](getting-started.md)
-- Check the [development guide](development.md)
+For now, the reusable foundation lives in `yasched.utilizing` (coloring, timing,
+structuring, and the XYML loader).
