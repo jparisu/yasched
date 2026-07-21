@@ -5,3 +5,5 @@ export { PanelCard } from './PanelCard';
 export { ToggleGroup } from './ToggleGroup';
 export { SettingsSection, SettingsRow } from './SettingsSection';
 export { ThemeToggle } from './ThemeToggle';
+export { StylePicker } from './StylePicker';
+export { ZoomControls } from './ZoomControls';

@@ -1,0 +1,77 @@
+# =============================================================================
+# Your personal yasched agenda.
+#
+# `yasched init` copies this file to ~/.yasched/agenda.yaml. Edit it freely,
+# then run `yasched serve` to view it locally in your browser.
+#
+# This is a small, friendly starting point. For the full set of features
+# (traits, DAG topics, all schedule types, sub-events, relations, event links),
+# see resources/teacher_example/ and its FEATURES.md in the yasched repo.
+# =============================================================================
+
+default:
+  attributes:
+    priority: 3
+    status: todo
+  layout:
+    shape: { type: rounded, radius: 6px }
+    background: { type: solid, color: "#f4f4f5" }
+
+traits:
+  urgent:
+    attributes: { priority: 5 }
+    layout:
+      pin: { color: red, icon: "🔥" }
+  focus:
+    attributes: { kanban: on-focus }
+
+topics:
+  - id: work
+    name: Work
+    tags: [work]
+    layout:
+      background: { type: solid, color: "#3b82f6" }
+  - id: personal
+    name: Personal
+    tags: [personal]
+    layout:
+      background: { type: solid, color: "#10b981" }
+  - id: health
+    name: Health
+    tags: [personal]
+    layout:
+      background: { type: solid, color: "#f43f5e" }
+
+events:
+  - id: standup
+    name: Daily standup
+    topic_ids: [work]
+    schedules:
+      - type: weekly
+        week_days: [monday, tuesday, wednesday, thursday, friday]
+        start_time: "09:00"
+        duration: 15m
+
+  - id: gym
+    name: Gym
+    topic_ids: [health]
+    schedules:
+      - type: weekly
+        week_days: [tuesday, thursday]
+        start_time: "18:00"
+        duration: 1h
+
+tasks:
+  - id: welcome
+    name: "Welcome! Edit ~/.yasched/agenda.yaml to make this yours"
+    topic_ids: [personal]
+    traits: [urgent, focus]
+    attributes:
+      deadline: today
+
+  - id: plan-week
+    name: "Plan the week"
+    topic_ids: [work]
+    attributes:
+      status: doing
+      priority: 4

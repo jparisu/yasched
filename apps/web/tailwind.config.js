@@ -5,9 +5,14 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+        // Driven by the active style via CSS variables (see index.css).
+        sans: ['var(--app-font)', 'Nunito', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['var(--app-font-display)', 'Nunito', 'system-ui', 'sans-serif'],
       },
       colors: {
+        // Semantic accent, remapped per style through CSS variables.
+        accent: 'var(--accent)',
+        'accent-2': 'var(--accent-2)',
         coral: {
           50: '#fff5f5',
           100: '#ffe0e0',
@@ -16,6 +21,9 @@ export default {
           400: '#ff5c5c',
           500: '#ff6b6b',
           600: '#ec4c4c',
+          700: '#c93a3a',
+          800: '#9f2f2f',
+          900: '#7f2727',
         },
         mint: {
           50: '#f0fdf4',
@@ -25,6 +33,9 @@ export default {
           400: '#4ade80',
           500: '#10b981',
           600: '#059669',
+          700: '#047857',
+          800: '#065f46',
+          900: '#064e3b',
         },
         sky: {
           50: '#f0f9ff',
@@ -34,6 +45,9 @@ export default {
           400: '#38bdf8',
           500: '#0ea5e9',
           600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
         },
         lavender: {
           50: '#faf5ff',
@@ -43,6 +57,9 @@ export default {
           400: '#c084fc',
           500: '#a855f7',
           600: '#7c3aed',
+          700: '#6d28d9',
+          800: '#5b21b6',
+          900: '#4c1d95',
         },
         peach: {
           50: '#fff7ed',
@@ -52,6 +69,9 @@ export default {
           400: '#fb923c',
           500: '#f97316',
           600: '#ea580c',
+          700: '#c2410c',
+          800: '#9a3412',
+          900: '#7c2d12',
         },
         lemon: {
           50: '#fefce8',
@@ -61,6 +81,9 @@ export default {
           400: '#facc15',
           500: '#eab308',
           600: '#ca8a04',
+          700: '#a16207',
+          800: '#854d0e',
+          900: '#713f12',
         },
         rose: {
           50: '#fff1f2',
@@ -70,6 +93,9 @@ export default {
           400: '#fb7185',
           500: '#f43f5e',
           600: '#e11d48',
+          700: '#be123c',
+          800: '#9f1239',
+          900: '#881337',
         },
         teal: {
           50: '#f0fdfa',
@@ -79,6 +105,9 @@ export default {
           400: '#2dd4bf',
           500: '#14b8a6',
           600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
         },
         paper: {
           50: '#fefcf3',

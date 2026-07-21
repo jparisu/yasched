@@ -32,15 +32,8 @@ repos:
       - id: mypy
         pass_filenames: false
         additional_dependencies:
-        - numpy>=2.0.0
-        - pandas>=2.0.0
-        - scikit-learn>=1.0.0
-        - matplotlib>=3.0.0
-        - plotly>=5.0.0
-        - scipy>=1.0.0
-        - pandas-stubs>=2.0.0
-        - scipy-stubs>=1.10.0
-        - types-setuptools
+        - fastapi>=0.115.0
+        - uvicorn>=0.34.0
         - types-PyYAML
         args: ["--config-file=pyproject.toml", "src/yasched"]
         exclude: (^tests/)|(^\.dev/)|(^docs/)

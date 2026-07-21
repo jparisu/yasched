@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ToggleGroup, DisplayItem, GlobalControls } from '../components/ui';
-import { mockEvents, mockTasks } from '../data/mockData';
-import { CalendarView, DisplayStyle, Density, CardShape } from '../types';
+import { useData } from '../data/DataContext';
+import { useEditor } from '../data/EditorContext';
+import { useElement } from '../data/ElementContext';
+import { usePanelConfig } from '../data/usePanelConfig';
+import { itemListClass } from '../lib/itemList';
+import { orderTasks } from '../lib/tasks';
+import { baseId } from '../api/client';
+import { CalendarView, Density } from '../types';
 
-interface CalendarProps {
-  displayStyle: DisplayStyle;
-  density: Density;
-  cardShape: CardShape;
-  onUpdateSettings: (key: string, value: string) => void;
-}
-
-export function Calendar({ displayStyle, density, cardShape, onUpdateSettings }: CalendarProps) {
+export function Calendar() {
+  const { events: mockEvents, tasks: mockTasks } = useData();
+  const { openEdit } = useEditor();
+  const { openElement } = useElement();
+  const { view: displayStyle, setView: setDisplayStyle } = usePanelConfig('calendar');
+  const density = 'comfortable' as Density;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('monthly');
 
@@ -93,7 +97,7 @@ export function Calendar({ displayStyle, density, cardShape, onUpdateSettings }:
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     return (
-      <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200/50 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <div className="calendar-surface rounded-2xl overflow-hidden shadow-lg border border-slate-200/50 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="grid grid-cols-7 bg-gradient-to-r from-sky-100 to-lavender-100 dark:from-sky-900/30 dark:to-lavender-900/30">
           {dayNames.map((day) => (
             <div key={day} className="py-2.5 text-center text-sm font-semibold text-slate-600 dark:text-slate-300">
@@ -137,6 +141,8 @@ export function Calendar({ displayStyle, density, cardShape, onUpdateSettings }:
                       itemStyle={event.style}
                       topicId={event.topicId}
                       startTime={event.startTime}
+                      onClick={() => openEdit('events', baseId(event.id))}
+                      onDoubleClick={() => openElement('events', baseId(event.id))}
                     />
                   ))}
                   {tasks.length > 0 && displayStyle !== 'collapsed' && (
@@ -144,7 +150,8 @@ export function Calendar({ displayStyle, density, cardShape, onUpdateSettings }:
                       {tasks.slice(0, 3).map((task) => (
                         <span
                           key={task.id}
-                          className="w-1.5 h-1.5 rounded-full"
+                          onClick={() => openEdit('tasks', baseId(task.id))}
+                          className="w-1.5 h-1.5 rounded-full cursor-pointer"
                           style={{ backgroundColor: task.style?.leftColor || mockTasks.find(t => t.topicId === task.topicId)?.style?.leftColor }}
                           title={task.title}
                         />
@@ -156,6 +163,127 @@ export function Calendar({ displayStyle, density, cardShape, onUpdateSettings }:
             );
           })}
         </div>
+      </div>
+    );
+  };
+
+  const dayItems = (date: Date) => {
+    const { events, tasks } = getItemsForDay(date);
+    const sortedEvents = [...events].sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+    return (
+      <div className={itemListClass(displayStyle)}>
+        {sortedEvents.map((event) => (
+          <DisplayItem
+            key={event.id}
+            title={event.title}
+            displayStyle={displayStyle}
+            itemStyle={event.style}
+            startTime={event.startTime}
+            endTime={event.endTime}
+            recurring={event.recurring}
+            onClick={() => openEdit('events', baseId(event.id))}
+            onDoubleClick={() => openElement('events', baseId(event.id))}
+          />
+        ))}
+        {orderTasks(tasks).map(({ task, depth }) => (
+          <DisplayItem
+            key={task.id}
+            title={task.title}
+            displayStyle={displayStyle}
+            itemStyle={task.style}
+            priority={task.priority}
+            deadline={task.deadline}
+            depth={depth}
+            onClick={() => openEdit('tasks', baseId(task.id))}
+            onDoubleClick={() => openElement('tasks', baseId(task.id))}
+          />
+        ))}
+        {events.length + tasks.length === 0 && (
+          <p className="text-sm text-slate-400 text-center py-4">Nothing scheduled</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderDailyView = () => (
+    <div className="max-w-2xl mx-auto rounded-2xl shadow-lg border border-slate-200/50 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+      {dayItems(currentDate)}
+    </div>
+  );
+
+  const renderWeeklyView = () => {
+    const monday = new Date(currentDate);
+    const dow = monday.getDay();
+    monday.setDate(monday.getDate() - dow + (dow === 0 ? -6 : 1));
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return (
+      <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200/50 dark:border-slate-700 bg-white dark:bg-slate-800 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
+        {days.map((d, i) => {
+          const today = isToday(d);
+          return (
+            <div key={i} className="border-r border-b border-slate-100 dark:border-slate-800 p-2 min-h-[12rem]">
+              <div className="text-center mb-2">
+                <p className={`text-xs font-medium ${today ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}`}>{names[i]}</p>
+                <span className={
+                  today
+                    ? 'inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold bg-gradient-to-br from-sky-400 to-lavender-500 text-white'
+                    : 'text-sm font-bold text-slate-700 dark:text-slate-200'
+                }>
+                  {d.getDate()}
+                </span>
+              </div>
+              {dayItems(d)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderYearlyView = () => {
+    const year = currentDate.getFullYear();
+    const countFor = (m: number) => {
+      const evs = mockEvents.filter((e) => {
+        const d = new Date(e.date);
+        return d.getFullYear() === year && d.getMonth() === m;
+      }).length;
+      const tks = mockTasks.filter(
+        (t) => t.deadline && new Date(t.deadline).getFullYear() === year && new Date(t.deadline).getMonth() === m
+      ).length;
+      return { evs, tks };
+    };
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 12 }, (_, m) => {
+          const { evs, tks } = countFor(m);
+          const monthDate = new Date(year, m, 1);
+          const current = m === new Date().getMonth() && year === new Date().getFullYear();
+          return (
+            <button
+              key={m}
+              onClick={() => {
+                setCurrentDate(new Date(year, m, 1));
+                setView('monthly');
+              }}
+              className={`rounded-xl border p-4 text-left transition-all hover:shadow-md bg-white dark:bg-slate-800 ${
+                current ? 'border-sky-400 ring-1 ring-sky-300' : 'border-slate-200/50 dark:border-slate-700'
+              }`}
+            >
+              <p className="font-semibold text-slate-800 dark:text-slate-100">
+                {monthDate.toLocaleDateString('en-US', { month: 'long' })}
+              </p>
+              <div className="flex gap-3 mt-2 text-xs text-slate-500 dark:text-slate-400">
+                <span>{evs} event{evs !== 1 ? 's' : ''}</span>
+                <span>{tks} deadline{tks !== 1 ? 's' : ''}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     );
   };
@@ -198,16 +326,15 @@ export function Calendar({ displayStyle, density, cardShape, onUpdateSettings }:
           />
           <GlobalControls
             displayStyle={displayStyle}
-            density={density}
-            cardShape={cardShape}
-            onDisplayStyleChange={(v) => onUpdateSettings('displayStyle', v)}
-            onDensityChange={(v) => onUpdateSettings('density', v)}
-            onCardShapeChange={(v) => onUpdateSettings('cardShape', v)}
+            onDisplayStyleChange={setDisplayStyle}
           />
         </div>
       </div>
 
+      {view === 'daily' && renderDailyView()}
+      {view === 'weekly' && renderWeeklyView()}
       {view === 'monthly' && renderMonthlyView()}
+      {view === 'yearly' && renderYearlyView()}
     </div>
   );
 }

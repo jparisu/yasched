@@ -1,0 +1,27 @@
+# =============================================================================
+# yasched — run locally with Docker Compose.
+#
+#   make up          # build (first time) + start detached  → http://localhost:8000
+#   make down        # stop and remove the container
+#
+# Or directly:
+#   docker compose up -d --build
+#   docker compose down
+#
+# By default it serves an editable personal agenda at ./data/agenda.yaml on the
+# host (created from the template on first run). Set YASCHED_AGENDA to the
+# bundled example to preview every feature (see `make up-demo`).
+# =============================================================================
+services:
+  yasched:
+    build: .
+    container_name: yasched
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      # Personal agenda persisted on the host and editable there.
+      - ./data:/data
+    environment:
+      # Override to /app/resources/teacher_example/teacher_main.yaml for the demo.
+      YASCHED_AGENDA: ${YASCHED_AGENDA:-/data/agenda.yaml}
+    restart: unless-stopped

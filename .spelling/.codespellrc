@@ -1,6 +1,6 @@
 [codespell]
 # Where to run
-skip = .git,dist,build,site,docs/_build,*.png,*.jpg,*.jpeg,*.gif,*.svg,*.pdf,*.ipynb,apps/web/package-lock.json
+skip = .git,dist,build,site,docs/_build,*.png,*.jpg,*.jpeg,*.gif,*.svg,*.pdf,*.ipynb,node_modules,apps/web/node_modules,apps/web/dist,apps/web/package-lock.json,.venv
 # File globs to include (adjust as you like)
 builtin = clear,rare
 check-filenames = true

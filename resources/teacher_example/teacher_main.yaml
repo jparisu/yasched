@@ -1,0 +1,34 @@
+# =============================================================================
+# yasched v3.0 — comprehensive example: a university teacher's schedule.
+#
+# This file is the entry point. It is designed to exercise EVERY capability of
+# the v3.0 data model and the xyml loader, so it can serve as a regression
+# fixture once the code is implemented. See FEATURES.md for the checklist.
+#
+# It mixes an INLINE section (`default`) with three INCLUDED sections
+# (`traits`, `topics`, `events`, `tasks`) via the `__file__` directive.
+# =============================================================================
+
+# --- `default` layer: the lowest-priority layer, fills any field left unset ---
+# Resolution order (lowest -> highest): default < topic(s) < traits < parent < own
+default:
+  attributes:
+    priority: 1
+    status: todo
+  layout:
+    shape: { type: rounded, radius: 6px }
+    background: { type: solid, color: "#f4f4f5" }
+
+# --- Reusable named bundles (attributes and/or layout) ---
+traits:
+  __file__: teacher_traits.yaml
+
+# --- The three persisted entity kinds ---
+topics:
+  __file__: teacher_topics.yaml
+
+events:
+  __file__: teacher_events.yaml
+
+tasks:
+  __file__: teacher_tasks.yaml

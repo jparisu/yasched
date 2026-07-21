@@ -1,15 +1,28 @@
-import { CheckCircle2, Clock, Layers, Calendar, Tag, AlertCircle } from 'lucide-react';
-import { SummaryCard, PanelCard, DisplayItem } from '../components/ui';
-import { mockTasks, mockEvents, mockTopics, mockDeadlines } from '../data/mockData';
-import { DisplayStyle, Density, CardShape } from '../types';
+import { useState } from 'react';
+import { CheckCircle2, Clock, Layers, Calendar, Tag, AlertCircle, ChevronDown } from 'lucide-react';
+import { SummaryCard, PanelCard, DisplayItem, GlobalControls } from '../components/ui';
+import { useData } from '../data/DataContext';
+import { useEditor } from '../data/EditorContext';
+import { useElement } from '../data/ElementContext';
+import { baseId } from '../api/client';
+import { contrastText } from '../lib/colors';
+import { itemListClass } from '../lib/itemList';
+import { visibleDeadlines } from '../lib/tasks';
+import { usePanelConfig } from '../data/usePanelConfig';
 
-interface StatisticsProps {
-  displayStyle: DisplayStyle;
-  density: Density;
-  cardShape: CardShape;
-}
-
-export function Statistics({ displayStyle, density }: StatisticsProps) {
+export function Statistics() {
+  const { tasks: mockTasks, events: mockEvents, topics: mockTopics, deadlines: mockDeadlines } = useData();
+  const { openEdit } = useEditor();
+  const { openElement } = useElement();
+  const { view: displayStyle, setView } = usePanelConfig('statistics');
+  const [collapsedTopics, setCollapsedTopics] = useState<Set<string>>(new Set());
+  const toggleTopic = (id: string) =>
+    setCollapsedTopics((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
   const totalTasks = mockTasks.length;
   const completedTasks = mockTasks.filter(t => t.status === 'done').length;
   const pendingTasks = mockTasks.filter(t => t.status !== 'done').length;
@@ -18,20 +31,61 @@ export function Statistics({ displayStyle, density }: StatisticsProps) {
   const totalEvents = mockEvents.length;
   const upcomingEvents = mockEvents.filter(e => new Date(e.date) >= new Date()).length;
 
-  const tasksByTopic = mockTopics.map(topic => ({
-    topic: topic.name,
-    count: mockTasks.filter(t => t.topicId === topic.id).length,
-    color: topic.color,
-    style: topic.style,
-  })).filter(t => t.count > 0);
+  // Tasks by topic, organized as a hierarchy: root topics, then sub-topics,
+  // then sub-sub-topics… Each row shows its own tasks and its sub-tree total.
+  const topicById = new Map(mockTopics.map((t) => [t.id, t]));
+  const directCount = (id: string) => mockTasks.filter((t) => t.topicId === id).length;
+  const childrenOf = new Map<string, typeof mockTopics>();
+  for (const t of mockTopics) {
+    const p = t.parentIds?.[0];
+    if (p && topicById.has(p)) {
+      const l = childrenOf.get(p) ?? [];
+      l.push(t);
+      childrenOf.set(p, l);
+    }
+  }
+  const subtreeCount = (id: string): number =>
+    directCount(id) + (childrenOf.get(id) ?? []).reduce((s, c) => s + subtreeCount(c.id), 0);
+  const topicRows: {
+    id: string; name: string; color: string; depth: number; direct: number; total: number; hasChildren: boolean;
+  }[] = [];
+  const seenT = new Set<string>();
+  const walkTopic = (t: (typeof mockTopics)[number], depth: number) => {
+    if (seenT.has(t.id)) return;
+    seenT.add(t.id);
+    const kids = childrenOf.get(t.id) ?? [];
+    topicRows.push({
+      id: t.id, name: t.name, color: t.color, depth,
+      direct: directCount(t.id), total: subtreeCount(t.id), hasChildren: kids.length > 0,
+    });
+    // A collapsed topic hides the rows of its descendants.
+    if (!collapsedTopics.has(t.id)) for (const c of kids) walkTopic(c, depth + 1);
+  };
+  mockTopics
+    .filter((t) => !t.parentIds?.length || !topicById.has(t.parentIds[0]))
+    .forEach((r) => walkTopic(r, 0));
+  const visibleTopicRows = topicRows.filter((r) => r.total > 0);
+  const maxTopicTotal = Math.max(1, ...visibleTopicRows.map((r) => r.total));
 
-  const tasksByPriority = [
-    { priority: 'high', count: mockTasks.filter(t => t.priority === 'high').length, color: '#ef4444' },
-    { priority: 'medium', count: mockTasks.filter(t => t.priority === 'medium').length, color: '#f59e0b' },
-    { priority: 'low', count: mockTasks.filter(t => t.priority === 'low').length, color: '#22c55e' },
-  ];
+  // Tasks ordered by priority (desc), then due date (asc), then name.
+  const priorityTasks = [...mockTasks].sort((a, b) => {
+    const pa = a.priority ?? -Infinity;
+    const pb = b.priority ?? -Infinity;
+    if (pb !== pa) return pb - pa;
+    const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    if (da !== db) return da - db;
+    return a.title.localeCompare(b.title);
+  });
 
-  const closeDeadlines = mockDeadlines
+  const closeDeadlines = visibleDeadlines(mockDeadlines, mockTasks)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const closeEvents = mockEvents
+    .filter((e) => new Date(e.date) >= todayStart)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
 
@@ -39,6 +93,9 @@ export function Statistics({ displayStyle, density }: StatisticsProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <GlobalControls displayStyle={displayStyle} onDisplayStyleChange={setView} />
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SummaryCard
           title="Total Tasks"
@@ -78,65 +135,73 @@ export function Statistics({ displayStyle, density }: StatisticsProps) {
           subtitle="Distribution across categories"
           className="overflow-hidden"
         >
-          <div className="space-y-3">
-            {tasksByTopic.map(({ topic, count, color }) => (
-              <div key={topic} className="flex items-center gap-3">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-                  style={{ backgroundColor: color }}
+          <div className="space-y-2.5">
+            {visibleTopicRows.map((row) => (
+              <div key={row.id} className="flex items-center gap-2" style={{ marginLeft: row.depth * 18 }}>
+                {row.hasChildren ? (
+                  <button
+                    onClick={() => toggleTopic(row.id)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex-shrink-0"
+                    title={collapsedTopics.has(row.id) ? 'Expand sub-topics' : 'Collapse sub-topics'}
+                  >
+                    <ChevronDown size={16} className={`transition-transform ${collapsedTopics.has(row.id) ? '-rotate-90' : ''}`} />
+                  </button>
+                ) : (
+                  <span className="w-4 flex-shrink-0" />
+                )}
+                <button
+                  onClick={() => openEdit('topics', row.id)}
+                  onDoubleClick={() => openElement('topics', row.id)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{ backgroundColor: row.color, color: contrastText(row.color) }}
+                  title={`${row.total} in sub-tree`}
                 >
-                  {count}
-                </div>
+                  {row.total}
+                </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{topic}</span>
-                    <span className="text-xs text-slate-400">{Math.round((count / totalTasks) * 100)}%</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                      {row.name}
+                      {row.direct > 0 && row.direct !== row.total && (
+                        <span className="text-xs text-slate-400 ml-1">({row.direct} direct)</span>
+                      )}
+                    </span>
                   </div>
                   <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${(count / totalTasks) * 100}%`,
-                        backgroundColor: color,
-                      }}
+                      style={{ width: `${(row.total / maxTopicTotal) * 100}%`, backgroundColor: row.color }}
                     />
                   </div>
                 </div>
               </div>
             ))}
+            {visibleTopicRows.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-4">No tasks assigned to topics</p>
+            )}
           </div>
         </PanelCard>
 
-        <PanelCard
-          title="Tasks by Priority"
-          subtitle="Current priority distribution"
-          className="overflow-hidden"
-        >
-          <div className="flex items-center gap-4 mb-4">
-            {tasksByPriority.map(({ priority, count, color }) => (
-              <div
-                key={priority}
-                className="flex-1 text-center p-3 rounded-xl"
-                style={{ backgroundColor: `${color}15` }}
-              >
-                <div className="text-3xl font-bold mb-0.5" style={{ color }}>{count}</div>
-                <div className="text-xs font-medium text-slate-500 capitalize">{priority}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="h-8 rounded-xl overflow-hidden flex">
-            {tasksByPriority.map(({ priority, count, color }) => (
-              <div
-                key={priority}
-                className="h-full transition-all duration-500"
-                style={{
-                  width: `${(count / totalTasks) * 100}%`,
-                  backgroundColor: color,
-                }}
-                title={`${priority}: ${count}`}
-              />
-            ))}
+        <PanelCard title="Tasks by Priority" subtitle="Highest priority first" fill>
+          <div className={itemListClass(displayStyle)}>
+            {priorityTasks.length > 0 ? (
+              priorityTasks.map((task) => (
+                <DisplayItem
+                  key={task.id}
+                  title={task.title}
+                  displayStyle={displayStyle}
+                  itemStyle={task.style}
+                  topicId={task.topicId}
+                  priority={task.priority}
+                  status={task.status}
+                  deadline={task.deadline}
+                  onClick={() => openEdit('tasks', task.id)}
+                  onDoubleClick={() => openElement('tasks', task.id)}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-4">No tasks</p>
+            )}
           </div>
         </PanelCard>
       </div>
@@ -180,16 +245,16 @@ export function Statistics({ displayStyle, density }: StatisticsProps) {
             </div>
             <div className="flex justify-center gap-4 mt-4">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-success-500" />
-                <span className="text-sm text-slate-600">Done ({completedTasks})</span>
+                <span className="w-3 h-3 rounded-full bg-mint-500" />
+                <span className="text-sm text-slate-600 dark:text-slate-300">Done ({completedTasks})</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-warning-500" />
-                <span className="text-sm text-slate-600">In Progress ({doingTasks})</span>
+                <span className="w-3 h-3 rounded-full bg-peach-500" />
+                <span className="text-sm text-slate-600 dark:text-slate-300">In Progress ({doingTasks})</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-slate-300" />
-                <span className="text-sm text-slate-600">Todo ({pendingTasks - doingTasks})</span>
+                <span className="w-3 h-3 rounded-full bg-slate-400 dark:bg-slate-500" />
+                <span className="text-sm text-slate-600 dark:text-slate-300">Todo ({pendingTasks - doingTasks})</span>
               </div>
             </div>
           </div>
@@ -200,20 +265,53 @@ export function Statistics({ displayStyle, density }: StatisticsProps) {
           subtitle="Next 5 deadlines"
           colorClass="coral"
           variant="colorful"
-          className="lg:col-span-2"
         >
-          <div className={`space-y-2 ${density === 'compact' ? 'space-y-1' : ''}`}>
-            {closeDeadlines.map((deadline) => (
-              <DisplayItem
-                key={deadline.id}
-                title={deadline.title}
-                displayStyle={displayStyle}
-                itemStyle={deadline.style}
-                topicId={deadline.topicId}
-                priority={deadline.priority}
-                deadline={deadline.date}
-              />
-            ))}
+          <div className={itemListClass(displayStyle)}>
+            {closeDeadlines.length > 0 ? (
+              closeDeadlines.map((deadline) => (
+                <DisplayItem
+                  key={deadline.id}
+                  title={deadline.title}
+                  displayStyle={displayStyle}
+                  itemStyle={deadline.style}
+                  topicId={deadline.topicId}
+                  priority={deadline.priority}
+                  deadline={deadline.date}
+                  onClick={() => openEdit('tasks', baseId(deadline.id))}
+                  onDoubleClick={() => openElement('tasks', baseId(deadline.id))}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-6">No upcoming deadlines</p>
+            )}
+          </div>
+        </PanelCard>
+
+        <PanelCard
+          title="Upcoming Events"
+          subtitle="Next 5 events"
+          colorClass="lavender"
+          variant="colorful"
+        >
+          <div className={itemListClass(displayStyle)}>
+            {closeEvents.length > 0 ? (
+              closeEvents.map((event) => (
+                <DisplayItem
+                  key={event.id}
+                  title={event.title}
+                  displayStyle={displayStyle}
+                  itemStyle={event.style}
+                  topicId={event.topicId}
+                  startTime={event.startTime}
+                  endTime={event.endTime}
+                  recurring={event.recurring}
+                  onClick={() => openEdit('events', baseId(event.id))}
+                  onDoubleClick={() => openElement('events', baseId(event.id))}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-6">No upcoming events</p>
+            )}
           </div>
         </PanelCard>
       </div>

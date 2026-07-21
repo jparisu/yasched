@@ -1,20 +1,29 @@
+import { useRef } from 'react';
 import { ItemStyle, CardShape, DisplayStyle } from '../../types';
-import { getItemStyle } from '../../data/mockData';
-import { Clock, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Clock, AlertCircle, RefreshCw, CheckCircle2, CornerDownRight } from 'lucide-react';
+import { tintRgba } from '../../lib/colors';
+import { levelOf } from '../../lib/levels';
+import { useSettings } from '../../data/SettingsContext';
 
 interface DisplayItemProps {
   title: string;
   description?: string;
   displayStyle: DisplayStyle;
   itemStyle?: ItemStyle;
+  /** Accepted for call-site convenience; styling is derived from itemStyle. */
   topicId?: string;
   startTime?: string;
   endTime?: string;
-  priority?: 'low' | 'medium' | 'high';
+  priority?: number;
   status?: 'todo' | 'doing' | 'done';
   recurring?: boolean;
   deadline?: Date;
   onClick?: () => void;
+  onDoubleClick?: () => void;
+  /** Nesting depth for subtasks — indents the item to show hierarchy. */
+  depth?: number;
+  /** Extra classes for the root button (e.g. `h-full` to fill a time slot). */
+  className?: string;
 }
 
 const getShapeClass = (shape: CardShape): string => {
@@ -28,12 +37,19 @@ const getShapeClass = (shape: CardShape): string => {
   }
 };
 
+const DEFAULT_ACCENT = '#94a3b8';
+
+const PRIORITY_PILL: Record<'low' | 'medium' | 'high', string> = {
+  high: 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300',
+  medium: 'bg-peach-100 text-peach-600 dark:bg-peach-900/40 dark:text-peach-300',
+  low: 'bg-mint-100 text-mint-600 dark:bg-mint-900/40 dark:text-mint-300',
+};
+
 export function DisplayItem({
   title,
   description,
   displayStyle,
-  itemStyle: providedStyle,
-  topicId,
+  itemStyle,
   startTime,
   endTime,
   priority,
@@ -41,9 +57,47 @@ export function DisplayItem({
   recurring,
   deadline,
   onClick,
+  onDoubleClick,
+  depth = 0,
+  className = '',
 }: DisplayItemProps) {
-  const style = providedStyle || (topicId ? getItemStyle({ topicId }) : null)
-    || { backgroundColor: '#f1f5f9', leftColor: '#94a3b8', shape: 'rounded' as CardShape };
+  const { settings } = useSettings();
+  const priorityLevel = levelOf(priority, settings.priorityRanges);
+  const accent = itemStyle?.leftColor || DEFAULT_ACCENT;
+  const dot = itemStyle?.dotColor || accent;
+  const shape: CardShape = itemStyle?.shape || 'rounded';
+  const surface = { backgroundColor: tintRgba(accent, 0.16), borderLeftColor: accent };
+  const indent = depth > 0 ? { marginLeft: depth * 16 } : {};
+  const rootStyle = { ...surface, ...indent };
+  const subMark =
+    depth > 0 ? (
+      <CornerDownRight size={12} className="text-slate-400 flex-shrink-0" />
+    ) : null;
+
+  // Distinguish single- from double-click: defer the single-click briefly so a
+  // double-click (open Element panel) doesn't also fire the single-click (open
+  // the editor drawer) on top of it.
+  const clickTimer = useRef<number | null>(null);
+  const handleClick = () => {
+    if (!onClick) return;
+    if (!onDoubleClick) return onClick();
+    if (clickTimer.current) window.clearTimeout(clickTimer.current);
+    clickTimer.current = window.setTimeout(() => {
+      clickTimer.current = null;
+      onClick();
+    }, 220);
+  };
+  const handleDoubleClick = () => {
+    if (clickTimer.current) {
+      window.clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+    }
+    onDoubleClick?.();
+  };
+
+  // Hover tooltip: name plus the start/end time when available.
+  const timeText = startTime ? `${startTime}${endTime ? `–${endTime}` : ''}` : '';
+  const hoverTitle = timeText ? `${title} · ${timeText}` : title;
 
   const deadlineText = deadline
     ? Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -52,21 +106,16 @@ export function DisplayItem({
   if (displayStyle === 'collapsed') {
     return (
       <button
-        onClick={onClick}
-        className={`flex items-center gap-1.5 px-2 py-1 ${getShapeClass(style.shape)} transition-all hover:scale-105`}
-        style={{
-          backgroundColor: style.backgroundColor,
-          borderLeft: `3px solid ${style.leftColor}`,
-        }}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        title={hoverTitle}
+        className={`flex items-center gap-1.5 px-2 py-1 border-l-[3px] ${getShapeClass(shape)} transition-all hover:scale-105 ${className}`}
+        style={rootStyle}
       >
-        <span
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ backgroundColor: style.leftColor }}
-        />
+        {subMark}
+        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
         <span className="text-sm text-slate-700 dark:text-slate-200 truncate">{title}</span>
-        {status === 'done' && (
-          <CheckCircle2 size={12} className="text-success-500 ml-auto" />
-        )}
+        {status === 'done' && <CheckCircle2 size={12} className="text-mint-500 ml-auto" />}
       </button>
     );
   }
@@ -74,42 +123,34 @@ export function DisplayItem({
   if (displayStyle === 'line') {
     return (
       <button
-        onClick={onClick}
-        className={`w-full flex items-center gap-2 px-3 py-2 ${getShapeClass(style.shape)} transition-all hover:shadow-md`}
-        style={{
-          backgroundColor: style.backgroundColor,
-          borderLeft: `4px solid ${style.leftColor}`,
-        }}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        title={hoverTitle}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 border-l-4 ${getShapeClass(shape)} transition-all hover:shadow-md ${className}`}
+        style={rootStyle}
       >
-        <span
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: style.leftColor }}
-        />
-        <div className="flex-1 min-w-0 text-left">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{title}</p>
-          {startTime && (
-            <p className="text-xs text-slate-500">{startTime}{endTime && ` - ${endTime}`}</p>
-          )}
-        </div>
-        {priority && (
-          <span
-            className={`text-xs px-1.5 py-0.5 rounded ${
-              priority === 'high' ? 'bg-danger-100 text-danger-600' :
-              priority === 'medium' ? 'bg-warning-100 text-warning-600' :
-              'bg-success-100 text-success-600'
-            }`}
-          >
-            {priority}
+        {subMark}
+        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
+        {/* title + inline secondary info, all on one line */}
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate min-w-0">{title}</span>
+        {startTime && (
+          <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap flex-shrink-0">
+            {startTime}{endTime && `–${endTime}`}
           </span>
         )}
-        {status === 'done' && (
-          <CheckCircle2 size={14} className="text-success-500" />
+        <span className="flex-1" />
+        {priorityLevel && (
+          <span
+            title={`priority ${priority} (${priorityLevel})`}
+            className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${PRIORITY_PILL[priorityLevel]}`}
+          >
+            P{priority}
+          </span>
         )}
-        {recurring && (
-          <RefreshCw size={12} className="text-slate-400" />
-        )}
+        {status === 'done' && <CheckCircle2 size={14} className="text-mint-500 flex-shrink-0" />}
+        {recurring && <RefreshCw size={12} className="text-slate-400 flex-shrink-0" />}
         {deadlineText !== null && deadlineText <= 3 && (
-          <span className="text-xs text-danger-500 flex items-center gap-0.5">
+          <span className="text-xs text-rose-500 flex items-center gap-0.5 flex-shrink-0">
             <AlertCircle size={10} />
             {deadlineText <= 0 ? '!' : `${deadlineText}d`}
           </span>
@@ -120,20 +161,17 @@ export function DisplayItem({
 
   return (
     <button
-      onClick={onClick}
-      className={`w-full text-left p-3 ${getShapeClass(style.shape)} transition-all hover:shadow-lg ${
-        style.shape === 'sticky' ? 'sticky-note' : ''
-      }`}
-      style={{
-        backgroundColor: style.backgroundColor,
-        borderLeft: `4px solid ${style.leftColor}`,
-      }}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      title={hoverTitle}
+      className={`w-full text-left p-3 border-l-4 ${getShapeClass(shape)} transition-all hover:shadow-lg ${
+        shape === 'sticky' ? 'sticky-note' : ''
+      } ${className}`}
+      style={rootStyle}
     >
       <div className="flex items-start gap-2">
-        <span
-          className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0"
-          style={{ backgroundColor: style.leftColor }}
-        />
+        {subMark}
+        <span className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: dot }} />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-slate-800 dark:text-slate-100">{title}</p>
           {description && (
@@ -141,20 +179,17 @@ export function DisplayItem({
           )}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {startTime && (
-              <span className="text-xs text-slate-500 flex items-center gap-1">
+              <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <Clock size={10} />
                 {startTime}{endTime && ` - ${endTime}`}
               </span>
             )}
-            {priority && (
+            {priorityLevel && (
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  priority === 'high' ? 'bg-danger-200 text-danger-700' :
-                  priority === 'medium' ? 'bg-warning-200 text-warning-700' :
-                  'bg-success-200 text-success-700'
-                }`}
+                title={`priority ${priority} (${priorityLevel})`}
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_PILL[priorityLevel]}`}
               >
-                {priority}
+                priority {priority}
               </span>
             )}
             {recurring && (
@@ -164,7 +199,7 @@ export function DisplayItem({
               </span>
             )}
             {status === 'done' && (
-              <span className="text-xs text-success-500 flex items-center gap-0.5">
+              <span className="text-xs text-mint-500 flex items-center gap-0.5">
                 <CheckCircle2 size={12} />
                 done
               </span>
@@ -173,7 +208,7 @@ export function DisplayItem({
         </div>
       </div>
       {deadlineText !== null && deadlineText <= 3 && (
-        <div className="mt-2 pt-2 border-t border-slate-300/30 text-xs text-danger-600 flex items-center gap-1">
+        <div className="mt-2 pt-2 border-t border-slate-300/30 dark:border-slate-600/40 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
           <AlertCircle size={12} />
           {deadlineText <= 0 ? 'Overdue' : `${deadlineText} day${deadlineText > 1 ? 's' : ''} left`}
         </div>

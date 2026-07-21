@@ -1,117 +1,149 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="yasched" width="520" />
+</p>
+
 # yasched
 
-`yasched` is a YAML-based personal scheduler. Define tasks, events, and topics
-in plain YAML files and query or visualise them through a CLI or a Streamlit UI.
+**yasched** is a local-first, YAML-based personal scheduler. You describe your
+topics, tasks, and events in a plain YAML *agenda* file, and yasched serves a
+colorful web app to browse them — an agenda, a calendar, a task board, a focus
+view, and statistics.
 
-## Installation
+Everything runs **entirely on your machine**. There are no accounts, no cloud,
+and no outbound network calls.
 
-From a local checkout (with venv already activated):
+## Quick start
 
-```bash
-make install-current
-```
-
-For a full development setup (creates `.venv`):
-
-```bash
-make install
-source .venv/bin/activate
-```
-
-For the Streamlit frontend, also install the optional frontend dependency:
+One command builds everything and serves your personal agenda locally:
 
 ```bash
-pip install -e ".[frontend]"
+./run.sh
 ```
 
-## Apps
+On first run it creates `~/.yasched/agenda.yaml` from a template, builds the
+frontend, and opens the server at <http://127.0.0.1:8000>. Edit that YAML file,
+refresh the page, and your schedule updates.
 
-### CLI — `yasched`
-
-A command-line interface for querying the database.
+Want to explore a fully-featured example first?
 
 ```bash
-yasched --db path/to/main.yaml <group> <command> [options]
+make demo        # serves resources/teacher_example (uses every feature)
 ```
 
-Quick reference:
+### With Docker (easy up / down)
 
-| Command | Description |
+```bash
+make up          # build image (first time only) + start → http://localhost:8000
+make down        # stop and remove it
+```
+
+`make up` starts the app detached with a ready-to-use default document, so it is
+up in one command and torn down cleanly with `make down`. `make up-demo` instead
+serves the bundled comprehensive example. Equivalent without Make:
+
+```bash
+docker compose up -d --build     # start
+docker compose down              # stop
+docker compose logs -f           # watch logs   (or: make logs)
+```
+
+Your agenda lives in `./data/agenda.yaml` on the host (created on first run),
+so it persists and you can edit it directly. Override the port with
+`PORT=9000 make up`. *(The first build pulls base images and installs deps —
+needs network once, ~1–2 min. After that, up/down take seconds and the running
+container makes no outbound calls.)*
+
+### Command reference
+
+Everything you need to run it locally:
+
+| Command | What it does |
 |---|---|
-| `db validate` | Validate the database and report any errors |
-| `db info` | Summary statistics (entity counts, task status breakdown) |
-| `schedule daily [DATE]` | Daily schedule view (default: today) |
-| `schedule weekly [DATE]` | Weekly schedule view |
-| `schedule range START END` | Events and tasks between two ISO dates |
-| `tasks list [--status] [--topic] [--tag] [--priority-min/max]` | List tasks with optional filters |
-| `tasks show TASK_ID` | Full detail for one task |
-| `tasks search QUERY` | Substring search on name and description |
-| `tasks deadlines [--days N]` | Upcoming deadlines (default: 7 days) |
-| `tasks overdue` | Tasks past their deadline |
-| `tasks blocked` | Tasks in BLOCKED status |
-| `events list` | List all events |
-| `events show EVENT_ID` | Full detail for one event |
-| `events range START END` | Events in a date range |
-| `topics list` | Topic hierarchy as an indented tree |
-| `topics show TOPIC_ID` | Topic detail with children and task count |
-| `check conflicts [--start] [--end]` | Detect overlapping events |
-| `check stale-links` | Tasks still linked to already-ended events |
-| `check stale-blocks` | Tasks blocked by tasks that are already done |
-| `check all` | Run all checks at once |
+| `./run.sh` | **Do-everything**: create venv, install, build frontend, create `~/.yasched/agenda.yaml` if missing, serve on `:8000` (foreground, Ctrl-C to stop) |
+| `./run.sh path/to/agenda.yaml` | Same, against a specific agenda file |
+| `./run.sh --daemon` | Serve in the **background**, print the URL, return the terminal |
+| `./run.sh --stop` | Stop the background server |
+| `./run.sh --status` / `--restart` / `--logs` | Check / restart / follow logs of the background server |
+| `./run.sh --reinstall` / `--rebuild` | Reinstall after dependency changes / rebuild the frontend |
+| `HOST=0.0.0.0 PORT=9000 ./run.sh` | Override bind host/port (use the same `PORT` for `--stop`/`--status`) |
+| `make run` | Alias for `./run.sh` |
+| `make demo` | Serve the bundled `resources/teacher_example` (every feature; browse-only) |
+| `make serve` | Serve your personal agenda (assumes deps installed + frontend built) |
+| `make web-build` | Build the frontend bundle only |
+| `make web` | Frontend dev server with hot reload (proxies `/api` → `:8000`) |
+| `make up` | **Docker**: build (first time) + start detached on `:8000` with a default document |
+| `make up-demo` | Docker: start detached serving the bundled example (browse-only) |
+| `make down` | Docker: stop and remove the container |
+| `PORT=9000 make up` | Docker on a different port |
 
-Example:
+After `pip install -e .` (done by `run.sh`/`make install`), the `yasched` CLI is available:
 
 ```bash
-DB=resources/basic_example/basic_example_main.yaml
-
-yasched --db $DB db info
-yasched --db $DB tasks list --status todo
-yasched --db $DB tasks deadlines --days 30
-yasched --db $DB schedule daily 2026-01-15
-yasched --db $DB check all
+yasched init                              # create ~/.yasched/agenda.yaml from the template
+yasched serve --agenda FILE --port 8000   # run the local server
+yasched check --agenda FILE               # load + validate, print a summary
 ```
 
----
+`--agenda` defaults to `$YASCHED_AGENDA`, then `~/.yasched/agenda.yaml`. Then
+open <http://127.0.0.1:8000>.
 
-### Streamlit UI
+## The agenda file
 
-A browser-based proof-of-concept frontend with three tabs:
+An agenda is a YAML document with up to five top-level keys:
 
-- **MAIN** — database overview: validation status, entity counts, task status
-  breakdown, and topic tree.
-- **TASKS** — Kanban board with one column per task status; cards are styled
-  with the colours defined in their layout.
-- **EVENTS** — Monthly calendar with coloured event badges; hover over a badge
-  to see the event name, location, and description.
-
-Run with:
-
-```bash
-make streamlit
+```yaml
+default:            # lowest-priority layer, fills anything left unset
+traits:             # reusable named bundles of attributes and/or layout
+topics:             # organizational categories (a DAG)
+events:             # time-bound occurrences, recurring via `schedules`
+tasks:              # units of work (deadlines, subtasks, relations)
 ```
 
-Or directly:
+Every topic, task, and event carries two open "bags":
 
-```bash
-streamlit run apps/streamlit/yasched_streamlit.py
-```
+- **`attributes`** — semantic data (`deadline`, `priority`, `difficulty`,
+  `kanban`, `status`, …). Fully open: add any key you like.
+- **`layout`** — visual style (`background`, `border`, `icon`, `pin`, `shape`).
 
-Then open the URL printed by Streamlit (usually `http://localhost:8501`), enter
-the path to your YAML file in the sidebar, and click **Load**.
-
-Example database path to try:
+Both are resolved through one inheritance engine, lowest → highest:
 
 ```
-resources/basic_example/basic_example_main.yaml
+default  <  topic(s)  <  traits  <  parent  <  own
 ```
+
+`tags` accumulate (union) across the chain. Files can be split and composed
+with the xyml `__file__` / `__ext__` include directives.
+
+See [`resources/teacher_example/`](resources/teacher_example/) and its
+[`FEATURES.md`](resources/teacher_example/FEATURES.md) for a tour of every
+capability, and the [documentation](docs/) for the full reference.
+
+## Architecture
+
+```
+utilizing   generic value types (color, time, xyml loader)
+   ▲
+coring      plain data holders: Topic, Task, Event, Schedule, Layout, Trait
+   ▲
+backending  load (xyml → objects) · resolve (inheritance/traits) · schedule occurrences
+   ▲
+serving     FastAPI app + view DTOs + `yasched` CLI, serving the React SPA
+```
+
+The React frontend (`apps/web`) talks to the API over HTTP and is served as
+static files by the same process — one port, no CORS. See
+[`devs/v3-architecture.md`](devs/v3-architecture.md).
 
 ## Development
 
 ```bash
-make lint       # ruff + mypy
-make format     # auto-fix formatting
-make test       # pytest
-make docs       # build MkDocs site
+make install     # create .venv and install dev deps
+make test        # pytest (Python)
+make lint        # ruff + mypy
+make web         # frontend dev server with hot reload (proxies /api)
+make docs        # build the MkDocs site
+
+cd apps/web && npm run typecheck && npm run lint && npm run build   # frontend checks
 ```
 
 ## License

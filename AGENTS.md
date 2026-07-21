@@ -4,6 +4,9 @@
 This repository contains a Python library for schedule events and tasks using human-readable YAML files.
 The library is designed to be flexible and simple to use, allowing users to easily create and manage their schedules.
 
+## Restrictions
+- NEVER TOUCH ANYTHING OUTSIDE THIS REPOSITORY. You are only allowed to read and modify files within this repository.
+
 ## Priorities
 When working in this project, keep this order of importance:
 

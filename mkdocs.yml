@@ -35,6 +35,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Getting Started: getting-started.md
+  - Data Model: data-model.md
+  - Agenda Format: agenda-format.md
+  - Architecture: architecture.md
+  - API: api/index.md
 
 extra:
   social:

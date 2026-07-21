@@ -1,5 +1,13 @@
 export type Priority = 'low' | 'medium' | 'high';
-export type ViewMode = 'statistics' | 'agenda' | 'calendar' | 'taskboard' | 'focus' | 'graph' | 'settings';
+/** Bucket a numeric priority/difficulty falls into. */
+export type Level = 'low' | 'medium' | 'high';
+/** Two thresholds splitting a 1..10 scale into low / medium / high. */
+export interface LevelRanges {
+  lowMax: number;
+  medMax: number;
+}
+export type ViewMode = 'statistics' | 'agenda' | 'calendar' | 'weekly' | 'taskboard' | 'focus' | 'graph' | 'element' | 'settings';
+export type AppStyle = 'simple' | 'programmer' | 'office' | 'educational';
 export type DisplayStyle = 'square' | 'line' | 'collapsed';
 export type CardShape = 'rectangle' | 'rounded' | 'curvy' | 'cloudy' | 'sticky';
 export type CalendarView = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -10,7 +18,10 @@ export type RowMode = 'time' | 'category' | 'custom';
 
 export interface ItemStyle {
   backgroundColor: string;
+  /** Left accent line — reflects the MAIN (root) topic. */
   leftColor: string;
+  /** Dot color — reflects the specific sub-topic. Falls back to leftColor. */
+  dotColor?: string;
   shape: CardShape;
 }
 
@@ -18,6 +29,7 @@ export interface Topic {
   id: string;
   name: string;
   color: string;
+  parentIds?: string[];
   style: ItemStyle;
 }
 
@@ -25,11 +37,18 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  priority: Priority;
+  /** Numeric priority (1..10-ish); bucketed via Settings.priorityRanges. */
+  priority?: number;
+  /** Numeric difficulty (1..10-ish); bucketed via Settings.difficultyRanges. */
+  difficulty?: number;
   status: 'todo' | 'doing' | 'done';
   topicId: string;
   deadline?: Date;
   startDate?: Date;
+  /** Parent task id when this task is a subtask (decomposition). */
+  parentId?: string | null;
+  /** Effective `on-focus`: when true this subtask surfaces in the panels. */
+  onFocus?: boolean;
   style?: ItemStyle;
   createdAt: Date;
 }
@@ -43,6 +62,7 @@ export interface EventItem {
   topicId?: string;
   description?: string;
   recurring?: boolean;
+  onFocus?: boolean;
   style?: ItemStyle;
 }
 
@@ -50,7 +70,7 @@ export interface Deadline {
   id: string;
   title: string;
   date: Date;
-  priority: Priority;
+  priority?: number;
   topicId: string;
   style?: ItemStyle;
 }
@@ -67,15 +87,18 @@ export interface GraphNode {
 
 export interface Settings {
   theme: 'light' | 'dark';
+  style: AppStyle;
   density: Density;
   displayStyle: DisplayStyle;
-  cardShape: CardShape;
   showWeekends: boolean;
   defaultCalendarView: CalendarView;
   weekStartsOn: DayOfWeek;
   defaultColumnMode: ColumnMode;
   defaultRowMode: RowMode;
   accentColor: string;
+  /** Numeric-value buckets for task priority and difficulty. */
+  priorityRanges: LevelRanges;
+  difficultyRanges: LevelRanges;
 }
 
 export interface Statistics {

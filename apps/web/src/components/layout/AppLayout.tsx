@@ -1,6 +1,7 @@
 import { ViewMode, Settings } from '../../types';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { ValidationBanner } from '../ui/ValidationBanner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -19,7 +20,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''}`}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="app-bg min-h-screen">
         <Sidebar
           currentView={currentView}
           onViewChange={onViewChange}
@@ -31,7 +32,10 @@ export function AppLayout({
             settings={settings}
             onThemeToggle={onThemeToggle}
           />
-          <main className="p-4 md:p-6">{children}</main>
+          <main className="p-4 md:p-6" data-view={currentView}>
+            <ValidationBanner />
+            {children}
+          </main>
         </div>
       </div>
     </div>

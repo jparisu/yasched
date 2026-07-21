@@ -216,3 +216,6 @@ apps/web/dist/
 
 # Temporal files
 tmp/
+
+# Docker compose agenda volume
+/data/

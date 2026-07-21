@@ -1,5 +1,5 @@
-.PHONY: venv install install-current ensure-git precommit lint format test docs build clean streamlit \
-        install-api api kill-api install-web web
+.PHONY: venv install install-current ensure-git precommit lint format test docs build clean \
+        test-all run serve demo web-build web install-web up up-demo down logs
 
 VENV ?= .venv
 PYTHON ?= python3
@@ -14,13 +14,16 @@ VENV_MYPY := $(VENV)/bin/mypy
 VENV_PYTEST := $(VENV)/bin/pytest
 VENV_MKDOCS := $(VENV)/bin/mkdocs
 VENV_BUILD := $(VENV)/bin/python -m build
-VENV_UVICORN := $(VENV)/bin/uvicorn
+VENV_YASCHED := $(VENV)/bin/yasched
 
 WEB_DIR := apps/web
 
-DB_PATH ?= resources/basic_example/basic_example_main.yaml
-API_HOST ?= 127.0.0.1
-API_PORT ?= 8000
+# Agenda served by `make serve` (defaults to the personal agenda).
+AGENDA ?= $(HOME)/.yasched/agenda.yaml
+# Agenda served by `make demo` (the bundled comprehensive example).
+DEMO_AGENDA := resources/teacher_example/teacher_main.yaml
+HOST ?= 127.0.0.1
+PORT ?= 8000
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -59,24 +62,45 @@ build:
 
 test-all: lint format test docs
 
-streamlit:
-	pip install -e ".[frontend]" -q
-	streamlit run apps/streamlit/yasched_streamlit.py
-
 # ---------------------------------------------------------------------------
-# API (FastAPI backend)
+# Run the app locally (fully offline). `make run` is the one-command path.
 # ---------------------------------------------------------------------------
 
-install-api: venv
-	$(VENV_PIP) install -e ".[api]"
+# Build + install + create-agenda-if-missing + serve, in one go.
+run:
+	./run.sh
 
-api: install-api
-	-lsof -ti:$(API_PORT) | xargs kill -9 2>/dev/null; true
-	YASCHED_DB_PATH=$(DB_PATH) $(VENV_UVICORN) apps.api.main:app \
-		--host $(API_HOST) --port $(API_PORT) --reload
+# Serve your personal agenda (assumes deps installed and frontend built).
+serve:
+	$(VENV_YASCHED) serve --agenda "$(AGENDA)" --host $(HOST) --port $(PORT)
 
-kill-api:
-	-lsof -ti:$(API_PORT) | xargs kill -9 2>/dev/null; true
+# Serve the bundled comprehensive example (great for a first look).
+demo: web-build
+	$(VENV_YASCHED) serve --agenda "$(DEMO_AGENDA)" --host $(HOST) --port $(PORT)
+
+# ---------------------------------------------------------------------------
+# Docker (easiest up/down). First `make up` builds the image (~1-2 min, needs
+# network once); after that up/down take seconds.
+# ---------------------------------------------------------------------------
+DOCKER_COMPOSE ?= docker compose
+
+# Start detached with an editable default agenda -> http://localhost:$(PORT)
+up:
+	$(DOCKER_COMPOSE) up -d --build
+	@echo "yasched running at http://localhost:$(PORT)  —  stop it with 'make down'"
+
+# Same, but serve the bundled comprehensive example (browse-only).
+up-demo:
+	YASCHED_AGENDA=/app/resources/teacher_example/teacher_main.yaml $(DOCKER_COMPOSE) up -d --build
+	@echo "yasched (demo) at http://localhost:$(PORT)  —  stop it with 'make down'"
+
+# Stop and remove the container + network.
+down:
+	$(DOCKER_COMPOSE) down
+
+# Follow the container logs.
+logs:
+	$(DOCKER_COMPOSE) logs -f
 
 # ---------------------------------------------------------------------------
 # Web frontend (React + Vite)
@@ -85,8 +109,13 @@ kill-api:
 install-web:
 	cd $(WEB_DIR) && npm install
 
+# Production build of the SPA (served by the API).
+web-build: install-web
+	cd $(WEB_DIR) && npm run build
+
+# Dev server with hot reload (proxies /api to the running `yasched serve`).
 web: install-web
 	cd $(WEB_DIR) && npm run dev
 
 clean:
-	rm -rf build dist .coverage .pytest_cache .mypy_cache .ruff_cache site
+	rm -rf build dist .coverage .pytest_cache .mypy_cache .ruff_cache site apps/web/dist

@@ -1,0 +1,11 @@
+# =============================================================================
+# Shared template for a cancelled recurring-event occurrence.
+# Pulled into an event via the `__ext__` (EXTEND) directive: the fields here
+# form the base, and the sibling keys in the including event override/extend it.
+# This is a FILE-LEVEL reuse mechanism (xyml), complementary to in-model traits.
+# =============================================================================
+attributes:
+  status: cancelled
+tags: [cancelled]
+layout:
+  icon: { type: emoji, value: "❌" }

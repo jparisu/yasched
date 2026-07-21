@@ -1,0 +1,164 @@
+@startuml yasched-data
+' ===================================================================
+' yasched — PROPOSED data model (v4 study)
+' ===================================================================
+
+' Generic element model for all items in the system that will be represented in the UI
+protocol Element {
+    ' Generic properties of all elements
+    +id : string
+    +name : string
+    +description : string '?
+    --
+    ' Logic properties
+    +topic : Topic  ' mandatory
+    +labels : List<Topic>
+    --
+    ' Format properties
+    +layout : Layout
+    --
+    ' Open bags
+    +attributes : Map<string, Any>
+        ' e.g. status, priority, difficulty, effort, kanban, on-focus, location...
+}
+
+package "topicing" {
+
+    class Topic {
+    }
+    Topic --|> Element
+
+    ' main topic that is parent and root of any other topic
+    entity Main extends Topic {
+        -topic: None
+    }
+
+}
+
+package "eventing" {
+
+    package "scheduling" {
+
+        abstract class Schedule {
+            +startDate : Date
+            +endDate : Date
+        }
+        Schedule --|> Element
+
+        class WeeklySchedule extends Schedule {
+            +weekDays : Weekday[]
+        }
+
+        class MonthlySchedule extends Schedule {
+            +monthDays : int[]
+            ' 1..31 (clamped to month end)
+        }
+
+        class YearlySchedule extends Schedule {
+            +yearlyDays : YearlyDay[]
+        }
+
+    }
+
+    ' This class represents every event element that will be represented in an agenda
+    class Event {
+        +date: Date
+    }
+    Event --|> Element
+    Schedule --> Event: "produces"
+
+    ' An event with a duration
+    class LastingEvent {
+        +duration: Time
+    }
+    LastingEvent --|> Event
+
+}
+
+
+package "tasking" {
+
+    class Task {
+
+    }
+    Task --|> Element
+
+}
+
+package "visualizing" {
+
+    class Border {
+        + color : Color
+        + width : number
+        + style : BorderStyle
+    }
+
+    class Background {
+        + color : Color
+        ' If there is a second color, a gradient is used
+        + gradient_color: Color
+    }
+
+    enum BorderStyle {
+        solid
+        dashed
+        dotted
+    }
+
+    enum Shape {
+        rectangle
+        rounded_rectangle
+        ellipse
+        diamond
+    }
+
+    enum Animation {
+        none
+        beep
+        rumble
+        ' ?
+    }
+
+    enum HoverAnimation {
+        none
+        highlight
+        pulse
+        ' ?
+    }
+
+    class Pin {
+        +color : Color
+    }
+
+    class Format {
+        +font : Font
+        +fontSize : number
+        +fontColor : Color
+        +textAlign : TextAlign
+    }
+
+    ' Visual information for an element compose by smaller visual elements
+    class Layout {
+        +background : Background
+        +border : Border
+        +icon : Icon
+        +pin : Color
+        +shape : Shape
+        +animation : Animation
+        +hoverAnimation : HoverAnimation
+        +pin : Pin
+        ' This will be by default for now, but in the future it may be a new feature
+        +format: Format
+    }
+
+    Layout *--> Background : has
+    Layout *--> Border : has
+    Layout *--> Icon : has
+    Layout *--> Shape : has
+    Layout *--> Animation : has
+    Layout *--> HoverAnimation : has
+
+    ' There exist a layout precedence hierarchy: default < label < topic < attributes < parent < own
+    Element *--> Layout : has
+
+}

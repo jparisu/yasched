@@ -1,7 +1,9 @@
 export { Statistics } from './Statistics';
 export { Agenda } from './Agenda';
 export { Calendar } from './Calendar';
+export { WeekTimetable } from './WeekTimetable';
 export { TaskBoard } from './TaskBoard';
 export { Focus } from './Focus';
 export { DatabaseGraph } from './DatabaseGraph';
+export { ElementPage } from './ElementPage';
 export { SettingsPage } from './Settings';

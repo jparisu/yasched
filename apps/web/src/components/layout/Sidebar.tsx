@@ -3,12 +3,13 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
+  CalendarClock,
   Kanban,
   Focus,
   Share2,
+  Boxes,
   Settings,
   ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { ViewMode } from '../../types';
 
@@ -26,12 +27,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'statistics', label: 'Statistics', icon: <BarChart3 size={20} />, color: '#3b82f6' },
+  { id: 'statistics', label: 'Dashboard', icon: <BarChart3 size={20} />, color: '#3b82f6' },
   { id: 'agenda', label: 'Agenda', icon: <BookOpen size={20} />, color: '#f59e0b' },
   { id: 'calendar', label: 'Calendar', icon: <Calendar size={20} />, color: '#22c55e' },
+  { id: 'weekly', label: 'Weekly View', icon: <CalendarClock size={20} />, color: '#14b8a6' },
   { id: 'taskboard', label: 'Task Board', icon: <Kanban size={20} />, color: '#8b5cf6' },
   { id: 'focus', label: 'Focus', icon: <Focus size={20} />, color: '#06b6d4' },
   { id: 'graph', label: 'Database Graph', icon: <Share2 size={20} />, color: '#ec4899' },
+  { id: 'element', label: 'Element', icon: <Boxes size={20} />, color: '#f43f5e' },
   { id: 'settings', label: 'Settings', icon: <Settings size={20} />, color: '#64748b' },
 ];
 
@@ -46,17 +49,31 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
       } bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border-r border-slate-200/50 dark:border-slate-800 flex flex-col`}
     >
       <div className="flex items-center justify-between p-3 border-b border-slate-200/50 dark:border-slate-800">
-        {expanded && (
-          <span className="font-bold text-lg bg-gradient-to-r from-sky-500 to-lavender-500 bg-clip-text text-transparent">
-            yasched
-          </span>
+        {expanded ? (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <img src="/brand.png" alt="yasched" className="w-8 h-8 flex-shrink-0" />
+              <span className="font-bold text-lg bg-gradient-to-r from-sky-500 to-lavender-500 bg-clip-text text-transparent truncate">
+                yasched
+              </span>
+            </div>
+            <button
+              onClick={() => setExpanded(false)}
+              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors ml-auto"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </>
+        ) : (
+          // Collapsed: the brand icon itself expands the sidebar.
+          <button
+            onClick={() => setExpanded(true)}
+            title="Expand"
+            className="mx-auto p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <img src="/brand.png" alt="yasched" className="w-8 h-8" />
+          </button>
         )}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className={`p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors ${expanded ? 'ml-auto' : 'mx-auto'}`}
-        >
-          {expanded ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-        </button>
       </div>
 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
