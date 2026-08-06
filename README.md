@@ -1,126 +1,233 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="yasched" width="520" />
+</p>
+
 # yasched
 
-[![Docs](https://readthedocs.org/projects/yasched/badge/?version=latest)](https://yasched.readthedocs.io/en/latest/?badge=latest)
-[![CI](https://github.com/jparisu/yasched/actions/workflows/ci.yml/badge.svg)](https://github.com/jparisu/yasched/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/jparisu/yasched/branch/main/graph/badge.svg)](https://codecov.io/gh/jparisu/yasched)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/jparisu/yasched/blob/main/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+**yasched** is a local-first, YAML-based personal scheduler. You describe your
+topics, tasks, and events in a plain YAML *agenda* file, and yasched serves a
+colorful web app to browse them — an agenda, a calendar, a task board, a focus
+view, and statistics.
 
+Everything runs **entirely on your machine**. There are no accounts, no cloud,
+and no outbound network calls.
 
-**yasched** - Scheduler for agenda and tasks orchestration via YAML
+## Installing everything
 
-A simple yet powerful task scheduler that allows you to define and manage scheduled tasks using YAML configuration files, with a beautiful Streamlit-based web interface.
+There are two supported setups. Run `make check-tools` any time to see what you
+already have.
 
-## ✨ Features
+### Option A — Docker (simplest; one prerequisite)
 
-- 📝 **YAML-based Configuration**: Define tasks in simple, readable YAML format
-- ⏰ **Flexible Scheduling**: Support for various schedule patterns (seconds, minutes, hours, days, weeks)
-- 🎯 **Action System**: Predefined actions (print, log) with extensibility for custom actions
-- 🖥️ **Web Interface**: Beautiful Streamlit-based UI for managing tasks
-- 📊 **Monitoring**: Track task execution history and statistics
-- 🐍 **Python API**: Programmatic access to scheduler functionality
-- 🔧 **Daemon Mode**: Run as a background service with management scripts
-
-## 🚀 Quick Start
-
-### Installation
+Only [Docker](https://docs.docker.com/get-docker/) is required. The image builds
+Node + React, Python + the API, and the frontend bundle for you:
 
 ```bash
-pip install yasched
+make up      # build (first time, ~1–2 min) + start → http://localhost:8000
+make down    # stop and remove it
 ```
 
-Or install from source:
+Nothing else to install — not Node, not Python.
+
+### Option B — Local (for development)
+
+You need two system runtimes that a Python virtualenv cannot provide:
+
+| Tool | Version | Check |
+|---|---|---|
+| Python | ≥ 3.12 | `python3 --version` |
+| Node.js + npm | ≥ 20 | `node --version` |
+
+**Don't have Node.js?** Install it one of these ways:
 
 ```bash
-git clone https://github.com/jparisu/yasched.git
-cd yasched
-pip install -e .
+make install-node                       # installs Node 20 for your user via nvm, then open a new shell
+# — or —
+sudo apt-get install -y nodejs npm      # Debian/Ubuntu
+brew install node                       # macOS (Homebrew)
 ```
 
+Then install **everything** (Python deps in a venv, web deps, and the SPA build)
+in one command:
 
-### Using YAML Configuration
+```bash
+make install-all      # = Python .venv + npm install + build the frontend
+make demo             # serve the bundled example at http://127.0.0.1:8000
+```
 
-Create a `config.yaml` file:
+`make install-all` stops with clear instructions if Node is missing, so it is
+safe to run first.
+
+## Quick start
+
+Once the prerequisites above are in place, one command builds everything and
+serves your personal agenda locally:
+
+```bash
+./run.sh
+```
+
+On first run it creates `~/.yasched/agenda.yaml` from a template, builds the
+frontend, and opens the server at <http://127.0.0.1:8000>. Edit that YAML file,
+refresh the page, and your schedule updates.
+
+Want to explore a fully-featured example first?
+
+```bash
+make demo        # serves resources/example (a broad feature tour)
+```
+
+### With Docker (easy up / down)
+
+```bash
+make up          # build image (first time only) + start → http://localhost:8000
+make down        # stop and remove it
+```
+
+`make up` starts the app detached with a ready-to-use default document, so it is
+up in one command and torn down cleanly with `make down`. `make up-demo` instead
+serves the bundled comprehensive example. Equivalent without Make:
+
+```bash
+docker compose up -d --build     # start
+docker compose down              # stop
+docker compose logs -f           # watch logs   (or: make logs)
+```
+
+Your agenda lives in `./data/agenda.yaml` on the host (created on first run),
+so it persists and you can edit it directly. Override the port with
+`PORT=9000 make up`. *(The first build pulls base images and installs deps —
+needs network once, ~1–2 min. After that, up/down take seconds and the running
+container makes no outbound calls.)*
+
+### Command reference
+
+Everything you need to run it locally:
+
+| Command | What it does |
+|---|---|
+| `make check-tools` | Report which prerequisites (python / node / npm / docker) are present |
+| `make install-all` | Install **everything** for local dev: Python venv + web deps + build the SPA |
+| `make install-node` | Install Node 20 for your user via nvm (only if you don't have Node) |
+| `./run.sh` | **Do-everything**: create venv, install, build frontend, create `~/.yasched/agenda.yaml` if missing, serve on `:8000` (foreground, Ctrl-C to stop) |
+| `./run.sh path/to/agenda.yaml` | Same, against a specific agenda file |
+| `./run.sh --daemon` | Serve in the **background**, print the URL, return the terminal |
+| `./run.sh --stop` | Stop the background server |
+| `./run.sh --status` / `--restart` / `--logs` | Check / restart / follow logs of the background server |
+| `./run.sh --reinstall` / `--rebuild` | Reinstall after dependency changes / rebuild the frontend |
+| `HOST=0.0.0.0 PORT=9000 ./run.sh` | Override bind host/port (use the same `PORT` for `--stop`/`--status`) |
+| `make run` | Alias for `./run.sh` |
+| `make demo` | Serve the bundled `resources/example` (a broad feature tour) |
+| `make serve` | Serve your personal agenda (assumes deps installed + frontend built) |
+| `make web-build` | Build the frontend bundle only |
+| `make web` | Frontend dev server with hot reload (proxies `/api` → `:8000`) |
+| `make up` | **Docker**: build (first time) + start detached on `:8000` with a default document |
+| `make up-demo` | Docker: start detached serving the bundled example (browse-only) |
+| `make down` | Docker: stop and remove the container |
+| `PORT=9000 make up` | Docker on a different port |
+
+After `pip install -e .` (done by `run.sh`/`make install`), the `yasched` CLI is available:
+
+```bash
+yasched init                              # create ~/.yasched/agenda.yaml from the template
+yasched serve --agenda FILE --port 8000   # run the local server
+yasched check --agenda FILE               # load + validate, print a summary
+```
+
+`--agenda` defaults to `$YASCHED_AGENDA`, then `~/.yasched/agenda.yaml`. Then
+open <http://127.0.0.1:8000>.
+
+## The agenda file
+
+An agenda is a YAML document with one **flat list of elements** plus optional
+attribute definitions:
 
 ```yaml
-tasks:
-  - name: morning_greeting
-    description: Print a morning greeting
-    schedule: every day at 08:00
-    action: print
-    enabled: true
-    parameters:
-      message: "Good morning! Time to start the day."
-
-  - name: hourly_check
-    description: Hourly status check
-    schedule: every 1 hour
-    action: log
-    enabled: true
-    parameters:
-      message: "Hourly check complete"
-      level: info
+attributes:          # optional: user-defined attribute schema (type, range, ...)
+elements:            # one flat list; every element has an `id` and a `type`
+  - id: work
+    type: topic      # topic | event | task | schedule
+    directParents: [AllTopic]
+    attributes: { name: Work }
+    layout: { background: { color: "#3b82f6" } }
 ```
 
-Load and run:
+Everything is an **Element**. Only `id` and `type` are structural; `name`,
+`description`, dates, `status`, `connections`, … all live in the open
+`attributes` bag, alongside a `layout`. `directParents` is the single
+inheritance relation: an ordered list whose first entry is the element's
+**MainParent** and whose first reachable topic becomes the element's **Topic**.
+The built-in `AllTopic` root holds app-wide defaults.
 
-```python
-from yasched.utils import create_scheduler_from_config
+Values resolve per attribute (own wins, else the first parent in the linearized
+`Parents` list); layout resolves per field as `own > attribute-layout > parents`.
+Schedules generate events/tasks, and deadlines/reminders generate events, as
+**virtual** elements that become real when you edit them. Files can still be
+split with the xyml `__file__` / `__ext__` includes; the app flattens them into
+one file on first save.
 
-scheduler = create_scheduler_from_config("config.yaml")
-scheduler.run()
+> ⚠️ **YAML comments are not preserved.** The app rewrites the file from its
+> internal model, so comments (including the commented header from
+> `yasched init`) disappear the first time you save from the app. Keep notes in
+> an element's `description` attribute — that is part of the model and
+> round-trips safely. Hand-editing without ever saving from the app is lossless.
+> Fixing this properly is tracked as `TODO(comments)` in `ElementSerializer`.
+
+See [`resources/example/agenda.yaml`](resources/example/agenda.yaml) for a
+worked example, and the [agenda format reference](docs/agenda-format.md) for
+every key.
+
+## Architecture
+
+```
+utilizing   generic value types (color, time, duration, xyml loader)
+   ▲
+coring      the unified model: Element, ElementType, Layout, Connection,
+            AttributeDefinition
+   ▲
+backending  load/serialize (xyml ↔ single file) · resolve (DFS parents,
+            inheritance, layout) · generate auto-elements · validate
+   ▲
+serving     FastAPI app + view DTOs + `yasched` CLI, serving the React SPA
 ```
 
-## 📖 Documentation
+The React frontend (`apps/web`) talks to the API over HTTP and is served as
+static files by the same process — one port, no CORS. See the
+[architecture notes](docs/architecture.md).
 
-Full documentation is available at [https://jparisu.github.io/yasched](https://jparisu.github.io/yasched)
+> **Status (0.4.0):** the backend, HTTP API, CLI, test suite, and the React
+> frontend (category panels over `/api/elements`) are implemented. Build the
+> frontend with `cd apps/web && npm install && npm run build`.
 
-- [Installation Guide](docs/getting-started/installation.md)
-- [Quick Start](docs/getting-started/quickstart.md)
-- [Configuration](docs/getting-started/configuration.md)
-- [User Guide](docs/user-guide/tasks.md)
-
-## 🛠️ Development
-
-### Setup Development Environment
+## Development
 
 ```bash
-git clone https://github.com/jparisu/yasched.git
-cd yasched
-pip install -e ".[dev,docs]"
+make check-tools # verify python / node / npm are present
+make install-all # one-shot: .venv + Python dev deps + web deps + SPA build
+# (or, piecemeal:)
+make install     # create .venv and install Python dev deps only
+make test        # pytest (Python)
+make lint        # ruff + mypy
+make web         # frontend dev server with hot reload (proxies /api)
+make docs        # build the MkDocs site
+
+cd apps/web && npm run typecheck && npm run lint && npm run build   # frontend checks
 ```
 
-### Run Tests
+### Fonts (maintainers only)
+
+The app must never contact a font CDN, so web fonts are **vendored** into
+`apps/web/public/fonts/` and committed. Re-run this only when you add a family
+or a weight — it is the one step that needs the internet:
 
 ```bash
-pytest
+cd apps/web && ./scripts/fetch-fonts.sh   # downloads .woff2 + regenerates src/fonts.css
 ```
 
-### Run Linters
+Until it has been run once, `src/fonts.css` carries no `@font-face` rules and the
+app falls back to the system font stack — cosmetic only, and still fully local.
+CI fails the build if any CDN reference appears in `index.html`, `src/`, or `dist/`.
 
-```bash
-ruff check .        # Linting
-ruff format .       # Formatting
-mypy yasched app    # Type checking
-codespell           # Spell checking
-```
+## License
 
-### Build Documentation
-
-```bash
-mkdocs serve
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Licensed under the Apache 2.0 License.

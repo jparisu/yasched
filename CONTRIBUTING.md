@@ -1,243 +1,70 @@
-# Contributing to yasched
+# Contributing to My Yaml Scheduler
 
-Thank you for your interest in contributing to yasched! This document provides guidelines and instructions for contributing.
+## Development setup
 
-## Code of Conduct
+1. Create and activate a virtual environment.
+2. Clone the repository:
 
-Be respectful, inclusive, and professional in all interactions.
-
-## Getting Started
-
-1. **Fork the repository** on GitHub
-2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/yasched.git
+   git clone https://github.com/jparisu/yasched.git
    cd yasched
    ```
-3. **Create a virtual environment**:
+
+3. Install the project in editable mode:
+
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-4. **Install development dependencies**:
-   ```bash
-   pip install -e ".[dev,docs]"
+   python -m pip install -e ".[dev]"
+   pre-commit install
    ```
 
-## Development Workflow
-
-### 1. Create a Branch
-
-Create a new branch for your feature or bugfix:
+## Useful commands
 
 ```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/your-bugfix-name
+make format
+make lint
+make test
+make docs
 ```
 
-### 2. Make Changes
+## Pull requests
 
-- Write clean, readable code
-- Follow the existing code style
-- Add docstrings to functions and classes
-- Update documentation as needed
+Please keep pull requests focused, add or update tests when behavior changes, and update the documentation when needed.
 
-### 3. Run Tests
+## Release notes
 
-Before committing, ensure all tests pass:
+Add user-facing changes to `docs/changelog.md`.
 
-```bash
-# Run all tests
-pytest
+## Project structure
 
-# Run with coverage
-pytest --cov=yasched --cov=app
-```
+- `src/yasched/`: main source code for the project.
+- `tests/`: test suite for the project.
+- `docs/`: documentation for the project.
+- `apps/`: example applications and demos using the project.
 
-### 4. Run Linters
+### Format conventions
 
-Ensure code quality with our linting tools:
+#### Code
 
-```bash
-# Run ruff linting
-ruff check .
+- Classes would use `PascalCase`.
+- Functions and variables would use `snake_case`.
+- Constants would use `UPPER_SNAKE_CASE`.
 
-# Run ruff formatting
-ruff format .
+#### Tests
 
-# Run mypy type checking
-mypy yasched app
+- Every class and function should have corresponding tests inside `tests` directory.
+- Test directories must follow the same structure as the `src` directory.
+- Apps, scripts or documentation do not require tests by default.
+- Inside `tests`, a `manual` directory can be used for manual test scripts that require human interaction.
 
-# Run codespell
-codespell
-```
+#### Files and directories
 
-### 5. Commit Changes
+- Directories would use gerund `.ing` form.
+- If a file contains a single class, it would be named after the class.
+- If a file contains multiple classes or functions, it would be named after the main functionality it provides.
+- Use single files for each class or closely related classes.
 
-Write clear, descriptive commit messages:
+#### Python
 
-```bash
-git add .
-git commit -m "Add feature: description of your change"
-```
-
-Follow these commit message guidelines:
-- Use present tense ("Add feature" not "Added feature")
-- Use imperative mood ("Move cursor to..." not "Moves cursor to...")
-- Limit first line to 72 characters
-- Reference issues and pull requests when applicable
-
-### 6. Push and Create Pull Request
-
-```bash
-git push origin feature/your-feature-name
-```
-
-Then create a pull request on GitHub.
-
-## Coding Standards
-
-### Python Style
-
-- Follow PEP 8 style guide
-- Use type hints for function signatures
-- Maximum line length: 100 characters
-- Use meaningful variable and function names
-
-### Documentation
-
-- Add docstrings to all public functions, classes, and modules
-- Use Google-style docstrings
-- Update user documentation in `docs/` when adding features
-
-Example docstring:
-
-```python
-def my_function(param1: str, param2: int) -> bool:
-    """
-    Brief description of the function.
-
-    More detailed description if needed.
-
-    Args:
-        param1: Description of param1.
-        param2: Description of param2.
-
-    Returns:
-        Description of return value.
-
-    Raises:
-        ValueError: Description of when this is raised.
-    """
-    pass
-```
-
-### Testing
-
-- Write tests for new features
-- Maintain or improve test coverage
-- Use descriptive test names
-- Test edge cases and error conditions
-
-Example test:
-
-```python
-def test_feature_name() -> None:
-    """Test that feature works correctly."""
-    # Arrange
-    input_data = "test"
-
-    # Act
-    result = my_function(input_data)
-
-    # Assert
-    assert result == expected_value
-```
-
-## Project Structure
-
-```
-yasched/
-├── yasched/          # Backend package
-│   ├── __init__.py
-│   ├── scheduler.py  # Core scheduler logic
-│   ├── config.py     # Configuration management
-│   ├── actions.py    # Predefined actions
-│   └── utils.py      # Utility functions
-├── app/              # Frontend (Streamlit)
-│   ├── __init__.py
-│   └── main.py       # Main Streamlit app
-├── tests/            # Test suite
-│   ├── test_scheduler.py
-│   ├── test_config.py
-│   └── ...
-├── docs/             # Documentation
-│   ├── index.md
-│   └── ...
-├── scripts/          # Daemon management scripts
-│   └── ...
-├── .github/          # GitHub Actions workflows
-│   └── workflows/
-└── pyproject.toml    # Project configuration
-```
-
-## Types of Contributions
-
-### Bug Reports
-
-When filing a bug report, include:
-- Description of the bug
-- Steps to reproduce
-- Expected behavior
-- Actual behavior
-- Environment details (OS, Python version, etc.)
-
-### Feature Requests
-
-When suggesting a feature:
-- Describe the feature and its benefits
-- Provide use cases
-- Suggest implementation approaches if possible
-
-### Code Contributions
-
-We welcome contributions for:
-- Bug fixes
-- New features
-- Documentation improvements
-- Test improvements
-- Performance optimizations
-
-### Documentation
-
-- Fix typos and clarify existing documentation
-- Add examples and tutorials
-- Improve API documentation
-- Translate documentation (future)
-
-## Review Process
-
-1. All pull requests require review before merging
-2. Address reviewer feedback promptly
-3. Keep pull requests focused and manageable
-4. Ensure CI checks pass
-
-## Questions?
-
-- Open an issue for questions
-- Check existing issues and documentation
-- Reach out to maintainers
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
-## Recognition
-
-Contributors will be recognized in:
-- README.md (future Contributors section)
-- Release notes
-- Documentation credits
-
-Thank you for contributing to yasched! 🎉
+- Use typing annotations for all function signatures.
+- Use complete docstrings.
+- Use max line, max file and complexity checks to maintain readability and simplicity.

@@ -1,0 +1,152 @@
+name: App
+
+# Checks that the *application* still runs, not just that the library imports:
+# the frontend must build, and a real server must boot and answer on every
+# endpoint. Deliberately shallow — this is a "nothing is obviously broken" gate,
+# not an exhaustive suite.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Build
+        working-directory: apps/web
+        run: npm run build
+
+      - name: No external network references
+        # yasched is local-first: the shipped app must not reach out to a CDN.
+        # Fonts are self-hosted (see apps/web/scripts/fetch-fonts.sh).
+        run: |
+          if grep -rniE 'fonts\.(googleapis|gstatic)\.com|cdn\.jsdelivr|unpkg\.com' \
+               apps/web/index.html apps/web/src apps/web/dist; then
+            echo "::error::Found a CDN reference — the app must stay fully local."
+            exit 1
+          fi
+          echo "No CDN references found."
+
+  smoke:
+    name: Server smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          npm --prefix apps/web ci
+          npm --prefix apps/web run build
+
+      - name: CLI loads and validates the bundled example
+        run: yasched check --agenda resources/example/agenda.yaml
+
+      - name: CLI creates a fresh agenda
+        run: |
+          yasched init --agenda /tmp/fresh.yaml
+          yasched check --agenda /tmp/fresh.yaml
+
+      - name: Start the server
+        run: |
+          cp resources/example/agenda.yaml /tmp/smoke.yaml
+          yasched serve --agenda /tmp/smoke.yaml --host 127.0.0.1 --port 8000 &
+          echo $! > /tmp/server.pid
+          for _ in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1 && break
+            sleep 0.5
+          done
+          curl -fsS http://127.0.0.1:8000/api/health
+
+      - name: Every endpoint answers
+        run: |
+          set -e
+          for path in /api/health /api/meta /api/validate /api/elements /api/effort; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8000$path")"
+            echo "$path -> $code"
+            [ "$code" = "200" ] || { echo "::error::$path returned $code"; exit 1; }
+          done
+
+      - name: The SPA is served at /
+        run: |
+          body="$(curl -fsS http://127.0.0.1:8000/)"
+          grep -q '<div id="root">' <<<"$body" || {
+            echo "::error::/ did not serve the built SPA."; exit 1; }
+
+      - name: CRUD round-trip persists to the YAML file
+        run: |
+          set -e
+          curl -fsS -X POST http://127.0.0.1:8000/api/elements \
+            -H 'Content-Type: application/json' \
+            -d '{"id":"smoke-task","type":"task","attributes":{"name":"Smoke"}}'
+          grep -q 'smoke-task' /tmp/smoke.yaml || {
+            echo "::error::create did not reach disk."; exit 1; }
+          curl -fsS -X PUT http://127.0.0.1:8000/api/elements/smoke-task \
+            -H 'Content-Type: application/json' \
+            -d '{"type":"task","attributes":{"name":"Smoke edited"}}'
+          grep -q 'Smoke edited' /tmp/smoke.yaml || {
+            echo "::error::update did not reach disk."; exit 1; }
+          curl -fsS -X DELETE http://127.0.0.1:8000/api/elements/smoke-task
+          if grep -q 'smoke-task' /tmp/smoke.yaml; then
+            echo "::error::delete did not reach disk."; exit 1
+          fi
+          echo "CRUD round-trip OK."
+
+      - name: Error paths behave
+        run: |
+          set -e
+          missing="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/elements/nope)"
+          [ "$missing" = "404" ] || { echo "::error::unknown id gave $missing, want 404"; exit 1; }
+          bad="$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/api/elements \
+                 -H 'Content-Type: application/json' -d '{"type":"task"}')"
+          [ "$bad" = "400" ] || { echo "::error::missing id gave $bad, want 400"; exit 1; }
+          echo "Error paths OK."
+
+      - name: Stop the server
+        if: always()
+        run: kill "$(cat /tmp/server.pid)" 2>/dev/null || true

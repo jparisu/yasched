@@ -1,0 +1,323 @@
+/* Self-hosted fonts. Must stay first: CSS requires @import before other rules.
+   Vite inlines this at build time, so the bundle carries the @font-face rules
+   and the app never reaches out to a font CDN. */
+@import './fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--app-font, 'Nunito', 'Inter', system-ui, sans-serif);
+}
+
+/* Headings pick up the per-style display font (e.g. mono for Programmer,
+   Fredoka for Educational). */
+h1, h2, h3, h4 {
+  font-family: var(--app-font-display, 'Nunito', system-ui, sans-serif);
+}
+
+@layer base {
+  * {
+    @apply border-slate-200 dark:border-slate-700;
+  }
+  /* Theme-aware default text color so any element without an explicit
+     `text-*` class stays readable in dark mode (fixes black-on-dark). */
+  body {
+    @apply text-slate-800 dark:text-slate-100;
+  }
+}
+
+/* Density — scales all rem-based spacing/typography from the root. */
+:root[data-density='compact'] { font-size: 14px; }
+:root[data-density='comfortable'] { font-size: 16px; }
+:root[data-density='spacious'] { font-size: 18px; }
+
+@layer components {
+  /* Panels are slightly translucent so the Office/Educational backdrops show
+     through, with a blur so text stays crisp. */
+  .card {
+    @apply bg-white/85 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/50 dark:border-slate-700;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-300 hover:shadow-md hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50;
+  }
+
+  .input {
+    @apply flex-1 min-w-0 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/50;
+  }
+}
+
+@layer utilities {
+  .cloudy-shape {
+    border-radius: 24px 24px 8px 24px;
+  }
+
+  .sticky-shape {
+    border-radius: 4px 4px 24px 4px;
+  }
+
+  .curvy-shape {
+    border-radius: 16px;
+  }
+}
+
+.notebook-pattern {
+  background-image:
+    linear-gradient(transparent 23px, #d4a574 24px),
+    linear-gradient(to right, transparent calc(40px - 1px), #d4a574 calc(40px - 1px), #d4a574 40px, transparent 40px);
+  background-size: 100% 24px, 80px 100%;
+  background-attachment: local;
+}
+
+.paper-texture {
+  background-color: #fefcf3;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 23px,
+      rgba(180, 150, 100, 0.15) 23px,
+      rgba(180, 150, 100, 0.15) 24px
+    );
+}
+
+.agenda-page {
+  background: linear-gradient(135deg, #fefcf3 0%, #f7f3e4 100%);
+  box-shadow:
+    inset 0 0 60px rgba(139, 90, 43, 0.05),
+    0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.dark .agenda-page {
+  background: linear-gradient(135deg, #1c1917 0%, #292524 100%);
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.2),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.agenda-fold {
+  position: relative;
+}
+
+.agenda-fold::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(139, 90, 43, 0.3) 5%,
+    rgba(139, 90, 43, 0.3) 95%,
+    transparent 100%
+  );
+  transform: translateX(-50%);
+}
+
+.dark .agenda-fold::before {
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 5%,
+    rgba(255, 255, 255, 0.1) 95%,
+    transparent 100%
+  );
+}
+
+.agenda-ring {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: transparent;
+}
+
+.sticky-note {
+  filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.15));
+  transform: rotate(-1deg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sticky-note:hover {
+  transform: rotate(0deg) scale(1.02);
+  box-shadow: 4px 6px 12px rgba(0,0,0,0.2);
+}
+
+.sticky-note:nth-child(even) {
+  transform: rotate(1deg);
+}
+
+.sticky-note:nth-child(even):hover {
+  transform: rotate(0deg) scale(1.02);
+}
+
+/* ============================================================
+   STYLE SYSTEM
+   `data-style` lives on <html>, orthogonal to the `.dark` class,
+   so every style works in both light and dark. Tokens below are
+   consumed by Tailwind (font-sans / font-display / text-accent)
+   and by the scoped rules further down.
+   ============================================================ */
+
+:root,
+[data-style='simple'] {
+  --app-font: 'Nunito', 'Inter', system-ui, sans-serif;
+  --app-font-display: 'Nunito', system-ui, sans-serif;
+  --accent: #0ea5e9;   /* sky-500 */
+  --accent-2: #a855f7; /* lavender-500 */
+}
+
+[data-style='programmer'] {
+  --app-font: 'Inter', system-ui, sans-serif;
+  --app-font-display: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --accent: #2563eb;   /* flat, serious blue */
+  --accent-2: #2563eb;
+}
+
+[data-style='office'] {
+  --app-font: 'Inter', system-ui, sans-serif;
+  --app-font-display: 'Inter', system-ui, sans-serif;
+  --accent: #0f766e;   /* teal-700 */
+  --accent-2: #0d9488; /* teal-600 */
+}
+
+[data-style='educational'] {
+  --app-font: 'Nunito', system-ui, sans-serif;
+  --app-font-display: 'Fredoka', 'Nunito', system-ui, sans-serif;
+  --accent: #0ea5e9;
+  --accent-2: #a855f7;
+}
+
+/* ---- App background (class set on the layout root) ---- */
+.app-bg {
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+:root .app-bg,
+[data-style='simple'] .app-bg {
+  background: linear-gradient(to bottom right, #f8fafc, #ffffff, #f8fafc);
+}
+[data-style='simple'].dark .app-bg {
+  background: linear-gradient(to bottom right, #020617, #0f172a, #020617);
+}
+
+/* Programmer — flat surface with a faint dotted grid, no imagery */
+[data-style='programmer'] .app-bg {
+  background-color: #f4f4f5;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+[data-style='programmer'].dark .app-bg {
+  background-color: #0d1117;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Office — tidy desk photo behind a warm, readable scrim */
+[data-style='office'] .app-bg {
+  background:
+    linear-gradient(rgba(247, 243, 236, 0.55), rgba(247, 243, 236, 0.72)),
+    url('/styles/office-bg-light.webp') center top / cover fixed no-repeat,
+    #f2ede4;
+}
+[data-style='office'].dark .app-bg {
+  background:
+    linear-gradient(rgba(24, 20, 15, 0.62), rgba(24, 20, 15, 0.80)),
+    url('/styles/office-bg-dark.webp') center top / cover fixed no-repeat,
+    #1b1712;
+}
+
+/* Educational — cheerful classroom desk behind a pastel scrim */
+[data-style='educational'] .app-bg {
+  background:
+    linear-gradient(rgba(255, 251, 247, 0.50), rgba(255, 251, 247, 0.66)),
+    url('/styles/edu-bg-light.webp') center top / cover fixed no-repeat,
+    #fdf7f0;
+}
+[data-style='educational'].dark .app-bg {
+  background:
+    linear-gradient(rgba(23, 20, 42, 0.66), rgba(23, 20, 42, 0.82)),
+    url('/styles/edu-bg-dark.webp') center top / cover fixed no-repeat,
+    #16132a;
+}
+
+/* ---- Corner radius character ---- */
+/* Programmer: sharp. Educational: extra round. (rounded-full untouched.) */
+[data-style='programmer'] .rounded-2xl { border-radius: 6px; }
+[data-style='programmer'] .rounded-xl  { border-radius: 6px; }
+[data-style='programmer'] .rounded-lg  { border-radius: 4px; }
+[data-style='programmer'] .rounded-md  { border-radius: 3px; }
+
+[data-style='office'] .rounded-2xl { border-radius: 12px; }
+
+[data-style='educational'] .rounded-2xl { border-radius: 26px; }
+[data-style='educational'] .rounded-xl  { border-radius: 18px; }
+[data-style='educational'] .rounded-lg  { border-radius: 14px; }
+
+/* ---- Brand accent recolor ----
+   Rewrites the sky→lavender brand gradient (and the sky summary tiles)
+   to the style's accent by overriding the Tailwind stops variable. */
+[data-style='programmer'] .from-sky-400,
+[data-style='programmer'] .from-sky-500,
+[data-style='office'] .from-sky-400,
+[data-style='office'] .from-sky-500 {
+  --tw-gradient-stops: var(--accent), var(--accent-2);
+}
+
+/* ---- Decorative touches on shared panels ----
+   PanelCard carries the `panel-card` hook class. */
+.panel-card { position: relative; }
+
+/* Let the pushpin poke out above the card edge in the decorated styles. */
+[data-style='educational'] .panel-card,
+[data-style='office'] .panel-card { overflow: visible; }
+
+/* Educational: a pushpin at the top of each panel, colour cycled. */
+[data-style='educational'] .panel-card::before {
+  content: '';
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  margin-left: -14px;
+  width: 28px;
+  height: 28px;
+  background: url('/styles/pin-0.png') center / contain no-repeat;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25));
+  pointer-events: none;
+  z-index: 5;
+}
+[data-style='educational'] .panel-card:nth-child(6n + 2)::before { background-image: url('/styles/pin-1.png'); }
+[data-style='educational'] .panel-card:nth-child(6n + 3)::before { background-image: url('/styles/pin-2.png'); }
+[data-style='educational'] .panel-card:nth-child(6n + 4)::before { background-image: url('/styles/pin-3.png'); }
+[data-style='educational'] .panel-card:nth-child(6n + 5)::before { background-image: url('/styles/pin-4.png'); }
+[data-style='educational'] .panel-card:nth-child(6n)::before     { background-image: url('/styles/pin-5.png'); }
+
+/* Office: a faint coffee-cup ring watermark in the corner of each panel. */
+[data-style='office'] .panel-card::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 64px;
+  height: 64px;
+  background: url('/styles/coffee-ring.png') center / contain no-repeat;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ============================================================
+   PER-FORMAT SKINS — SHELVED (TODO)
+   The idea of giving each page a themed physical surface (Agenda as
+   an open book, Task Board as a cork board / whiteboard, Calendar as
+   a chalkboard, plus a monospace IDE for the programmer style) is
+   parked: the framed background images stretch and bleed over the
+   content at variable panel sizes. The full last version is kept
+   verbatim in ./per-format-skins.todo.css (intentionally NOT imported)
+   for a future pass — likely using border-image / 9-slice frames or a
+   fixed-aspect surface wrapper instead of a stretched photo.
+   The hooks (`<main data-view>`, `.board-surface`, `.calendar-surface`)
+   remain in place but inert.
+   ============================================================ */

@@ -1,0 +1,182 @@
+attributes:
+  effort:
+    type: number
+    applies_to:
+    - task
+    min: 0.0
+    max: 40.0
+  danger:
+    type: bool
+    applies_to:
+    - task
+    - event
+    layout:
+      border:
+        color: '#ef4444'
+        width: 2px
+        style: solid
+elements:
+- id: AllTopic
+  type: topic
+  attributes:
+    name: All
+    priority: 3
+  layout:
+    background:
+      color: '#f4f4f5'
+    shape: rounded_rectangle
+    format:
+      text_align: left
+- id: teaching
+  type: topic
+  directParents:
+  - AllTopic
+  attributes:
+    name: Teaching
+  layout:
+    background:
+      color: '#3b82f6'
+      gradient_color: '#1e3a8a'
+- id: research
+  type: topic
+  directParents:
+  - AllTopic
+  attributes:
+    name: Research
+  layout:
+    background:
+      color: '#8b5cf6'
+- id: thesis
+  type: topic
+  directParents:
+  - teaching
+  - research
+  attributes:
+    name: Thesis supervision
+- id: math-101
+  type: topic
+  directParents:
+  - teaching
+  attributes:
+    name: Math 101
+  layout:
+    icon:
+      type: emoji
+      value: 📐
+- id: math-101-lecture
+  type: schedule
+  directParents:
+  - math-101
+  attributes:
+    name: Math 101 Lecture
+    generates: event
+    kind: weekly
+    weekDays:
+    - mon
+    - wed
+    startDate: 2026-09-01
+    endDate: 2026-12-18
+    time: '10:00'
+    duration: 1h
+    location: Room A-12
+- id: office-hours
+  type: schedule
+  directParents:
+  - teaching
+  attributes:
+    name: Office hours
+    generates: event
+    kind: weekly
+    weekDays:
+    - fri
+    time: '15:00'
+    duration: 2h
+- id: rent
+  type: schedule
+  directParents:
+  - AllTopic
+  attributes:
+    name: Pay rent
+    generates: task
+    kind: monthly
+    monthDays:
+    - 1
+- id: department-review
+  type: schedule
+  directParents:
+  - teaching
+  attributes:
+    name: Annual department review
+    generates: event
+    kind: yearly
+    yearlyDays:
+    - month: 6
+      day: 15
+- id: math-101-lecture#2026-09-07
+  type: event
+  directParents:
+  - math-101-lecture
+  attributes:
+    cancelled: true
+- id: write-paper
+  type: task
+  directParents:
+  - research
+  attributes:
+    name: Write conference paper
+    status: in-progress
+    priority: 8
+    difficulty: 7
+    effort: 30
+    timeSpent: 6h
+    deadline: 2026-10-20
+    reminders:
+    - 1w
+    - 1d
+    focus: true
+    connections:
+    - to: department-review
+      relation: follows
+- id: write-paper-intro
+  type: task
+  directParents:
+  - write-paper
+  attributes:
+    name: Draft introduction
+    status: completed
+    marked: true
+    timeSpent: 4h
+    deadline: 2026-10-05
+- id: write-paper-experiments
+  type: task
+  directParents:
+  - write-paper
+  attributes:
+    name: Run experiments
+    status: in-progress
+    marked: true
+    timeSpent: 3h30m
+    deadline: 2026-10-12
+- id: write-paper-notes
+  type: task
+  directParents:
+  - write-paper
+  attributes:
+    name: Misc notes
+- id: grade-midterm
+  type: task
+  directParents:
+  - math-101
+  attributes:
+    name: Grade midterm
+    status: not-started
+    priority: 6
+    deadline: 2026-10-25
+    danger: true
+    timeSpent: 2h
+- id: office-hours#2026-08-07
+  type: event
+  directParents:
+  - office-hours
+  attributes:
+    focus: false

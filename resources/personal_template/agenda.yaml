@@ -1,0 +1,85 @@
+# =============================================================================
+# Your personal yasched agenda.
+#
+# `yasched init` copies this file to ~/.yasched/agenda.yaml. Edit it freely,
+# then run `yasched serve` to view it locally in your browser.
+#
+# Everything is an Element with a `type` (topic | event | task | schedule).
+# `directParents` is an ordered inheritance list: the first entry is the
+# element's MainParent, the rest are extra tags. The first topic reachable
+# through the parents becomes the element's Topic (used for grouping). The
+# built-in `AllTopic` is the root and holds app-wide defaults.
+#
+# !! HEADS UP: these comments will disappear the first time you save from the
+# !! app, which rewrites this file from its internal model. Keep notes in an
+# !! element's `description` attribute instead — that round-trips safely.
+#
+# Full feature tour: resources/example/ in the yasched repo.
+# =============================================================================
+
+elements:
+  - id: AllTopic
+    type: topic
+    attributes: { name: All, priority: 3 }
+    layout:
+      shape: rounded_rectangle
+      background: { color: "#f4f4f5" }
+
+  - id: work
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Work }
+    layout: { background: { color: "#3b82f6" } }
+
+  - id: personal
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Personal }
+    layout: { background: { color: "#10b981" } }
+
+  - id: health
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Health }
+    layout: { background: { color: "#f43f5e" } }
+
+  # Recurring event — a Schedule element is the template for what it generates.
+  - id: standup
+    type: schedule
+    directParents: [work]
+    attributes:
+      name: Daily standup
+      generates: event
+      kind: weekly
+      weekDays: [mon, tue, wed, thu, fri]
+      time: "09:00"
+      duration: 15m
+
+  - id: gym
+    type: schedule
+    directParents: [health]
+    attributes:
+      name: Gym
+      generates: event
+      kind: weekly
+      weekDays: [tue, thu]
+      time: "18:00"
+      duration: 1h
+
+  - id: welcome
+    type: task
+    directParents: [personal]
+    attributes:
+      name: "Welcome! Edit ~/.yasched/agenda.yaml to make this yours"
+      focus: true
+      status: not-started
+      priority: 5
+      deadline: today
+
+  - id: plan-week
+    type: task
+    directParents: [work]
+    attributes:
+      name: Plan the week
+      status: in-progress
+      priority: 4

@@ -1,10 +1,9 @@
-site_name: yasched Documentation
-site_description: Scheduler for agenda and tasks orchestration via YAML
+site_name: My Yaml Scheduler
+site_description: Documentation for My Yaml Scheduler
 site_author: jparisu
-site_url: https://jparisu.github.io/yasched
-
-repo_name: jparisu/yasched
 repo_url: https://github.com/jparisu/yasched
+repo_name: yasched
+edit_uri: edit/main/docs/
 
 theme:
   name: readthedocs
@@ -14,23 +13,33 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths:
+            - src
           options:
             docstring_style: google
             show_source: true
-  - awesome-pages
+  - include-markdown
 
 markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
-  - pymdownx.details
-  - admonition
-  - toc:
-      permalink: true
-  - attr_list
-  - md_in_html
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Data Model: data-model.md
+  - Agenda Format: agenda-format.md
+  - Architecture: architecture.md
+  - API: api/index.md
 
 extra:
   social:

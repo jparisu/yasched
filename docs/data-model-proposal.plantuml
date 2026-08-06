@@ -1,0 +1,233 @@
+@startuml yasched-data-model-proposal
+' =============================================================================
+' yasched — PROPOSED data model (v4 study)
+'
+' Draft for discussion. Captures four ideas:
+'   1. A task deadline is a point in time  -> a Schedule with role = due
+'   2. A task can be periodic (periodic deadline) -> a recurring `due` schedule
+'   3. Topic and Tag are the same thing    -> one `Label` (tag = label w/o parent/style)
+'   4. New `Activity` element              -> logs ACTUAL time spent, for reports
+'
+' Guiding principles:
+'   - Planned time (Schedule -> Occurrence) is separate from actual time (Activity).
+'   - One temporal unit: the Occurrence. Event / deadline / work-block differ only
+'     by the Occurrence's `role`.
+'   - One categorization axis: the Label (topic = hierarchical/styled label;
+'     tag = flat label). Elements hold an ORDERED list of labels; labels[0] is primary.
+' =============================================================================
+
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ---------------------------------------------------------------------------
+' Enums
+' ---------------------------------------------------------------------------
+enum TaskStatus {
+  todo
+  doing
+  done
+}
+
+enum RelationType {
+  requires
+  needs
+  connected
+  similar
+}
+
+enum ScheduleRole {
+  occurrence  ' an Event happens
+  due         ' a Task is due (deadline; recurring = periodic deadline)
+  work        ' planned work block for a Task
+  window      ' an open span (start..end) the item is active
+}
+
+enum Level {
+  low
+  medium
+  high
+}
+
+' ---------------------------------------------------------------------------
+' Abstract base: everything shares identity + the open bags + resolution inputs
+' ---------------------------------------------------------------------------
+abstract class Element {
+  +id : string
+  +name : string
+  +description : string?
+  --
+  ' open bags (merged by the resolution engine)
+  +attributes : Map<string, Any>   ' e.g. status, priority, difficulty, effort, kanban, on-focus, location...
+  +layout : Layout
+  --
+  +traits : List<Trait>            ' reusable attribute/layout bundles (ordered)
+  +labels : List<Label>            ' ordered; labels[0] = primary (drives colour/placement)
+}
+
+' Unifies the former Topic + Tag.
+' A "tag" is simply a Label with no parents and no layout.
+' A "topic" is a Label with a hierarchy and/or a colour.
+class Label extends Element {
+  +parents : List<Label>           ' DAG (a label may have several parents)
+  --
+  ' inheritance of attributes/layout flows DOWN to elements that reference it
+}
+
+' Anything with a temporal footprint (expands schedules into occurrences).
+abstract class Schedulable extends Element {
+  +schedules : List<Schedule>
+}
+
+class Task extends Schedulable {
+  +status : TaskStatus
+  +priority : number               ' numeric; bucketed to Level via user ranges
+  +difficulty : number             ' numeric; bucketed to Level via user ranges
+  +parent : Task?                  ' subtask (decomposition); inherits parent's labels/attrs/layout
+  +relations : List<Relation>
+  --
+  ' Deadline is no longer an attribute: it is a Schedule with role = due.
+  ' A recurring `due` schedule => a periodic deadline.
+  ' Planned work uses schedules with role = work.
+}
+
+class Event extends Schedulable {
+  +parent : Event?                 ' single-occurrence OVERRIDE / cancel of a recurring parent
+  --
+  ' location, blocking_level, etc. live in attributes
+}
+
+' NEW: retrospective time log (actuals). "I spent 1h30 on padel today."
+class Activity extends Element {
+  +target : Element                ' polymorphic: Task | Event | Label
+  +start : DateTime
+  +end : DateTime?
+  +duration : Duration?            ' end OR duration (one is enough)
+  +note : string?
+  --
+  ' Reports sum durations grouped by target -> labels (with hierarchy roll-up):
+  '   "8h researching", "3h padel", "5h on CUNEF tasks"
+}
+
+' ---------------------------------------------------------------------------
+' Recurrence (planned time). Abstract Schedule + concrete kinds.
+' ---------------------------------------------------------------------------
+abstract class Schedule {
+  +role : ScheduleRole             ' occurrence | due | work | window
+  +startTime : Time?
+  +endTime : Time?
+  +duration : Duration?
+  +startDate : Date?               ' inclusive recurrence bounds
+  +endDate : Date?
+}
+class WeeklySchedule extends Schedule {
+  +weekDays : Weekday[]
+}
+class MonthlySchedule extends Schedule {
+  +day : int                       ' 1..31 (clamped to month end)
+}
+class YearlySchedule extends Schedule {
+  +month : int
+  +day : int
+}
+class SingleDaySchedule extends Schedule {
+  +day : Date
+}
+class MultiDaySchedule extends Schedule {
+  +startDay : Date
+  +endDay : Date
+}
+
+' Derived at expansion time; NOT persisted.
+class Occurrence <<derived>> {
+  +source : Schedulable
+  +date : Date
+  +startTime : Time?
+  +endTime : Time?
+  +role : ScheduleRole
+  +isOverride : bool
+}
+
+' ---------------------------------------------------------------------------
+' Value objects / bundles
+' ---------------------------------------------------------------------------
+class Trait {
+  +name : string
+  +attributes : Map<string, Any>
+  +layout : Layout?
+}
+
+class Layout {
+  +backgrounds : List<Background>  ' compose by concrete type
+  +border : Border?
+  +icon : Icon?
+  +pin : Pin?
+  +shape : Shape?
+}
+
+class Relation {
+  +type : RelationType
+  +target : Task
+  +description : string?
+}
+
+' ---------------------------------------------------------------------------
+' Relationships
+' ---------------------------------------------------------------------------
+Element "0..*" o--> "0..*" Label   : labeled by (ordered)
+Element "0..*" o--> "0..*" Trait   : uses
+Element "1"    *--> "1"    Layout  : effective layout
+
+Label "0..*" --> "0..*" Label      : parent (DAG)
+
+Task  "0..*" --> "0..1" Task       : subtask of
+Event "0..*" --> "0..1" Event      : overrides occurrence of
+Task  "1"    *--> "0..*" Relation  : relations
+Relation "0..*" --> "1" Task       : target
+
+Schedulable "1" *--> "0..*" Schedule : schedules
+Schedule ..> Occurrence : expands to
+
+Activity "0..*" --> "1" Element    : logs time on (Task | Event | Label)
+
+Task ..> TaskStatus
+Task ..> Level : priority/difficulty bucketed by user ranges
+Relation ..> RelationType
+Schedule ..> ScheduleRole
+
+' ---------------------------------------------------------------------------
+' Notes
+' ---------------------------------------------------------------------------
+note as N_precedence
+  **Resolution precedence (lowest -> highest)**
+  default < labels (ancestors-first, listed order)
+          < traits (listed order) < parent < own
+  Merge rules:
+   - attributes: replace by key (higher wins)
+   - labels/tags: union (accumulate)
+   - layout: backgrounds compose by type; other fields higher-wins
+  (Engine unchanged from today; only entity boundaries change.)
+end note
+N_precedence .. Element
+
+note as N_ideas
+  **Idea mapping**
+  1. deadline = point in time  -> Schedule.role = due (single_day)
+  2. periodic deadline         -> Schedule.role = due, recurring (weekly/monthly)
+  3. topic == tag              -> Label (tag = no parent + no layout)
+  4. Activity                  -> actual time log -> time-spent reports by Label
+end note
+N_ideas .. Activity
+
+note as N_open
+  **Open decisions (discuss later)**
+  1. Keep Task & Event separate (shared Schedulable base) vs merge into one "Item"?
+  2. Primary label = labels[0], or an explicit `primary` flag / required home topic?
+  3. Activity: freeform start/stop timer vs quick "log N min on X"?
+     Can target a Label directly (e.g. "padel") when no Task/Event exists?
+  4. Drop `deadline:` attribute for a `due` schedule, or keep it as sugar
+     that desugars to a single-day `due` schedule?
+end note
+N_open .. Task
+
+@enduml

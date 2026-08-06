@@ -1,0 +1,165 @@
+.PHONY: venv install install-current ensure-git precommit lint format test docs build clean \
+        test-all run serve demo web-build web install-web up up-demo down logs \
+        check-tools require-node install-node install-all
+
+VENV ?= .venv
+PYTHON ?= python3
+PRE_COMMIT_ARGS ?= --all-files
+PRE_COMMIT_SKIP ?=
+TEST_ARGS ?= tests -v
+VENV_PYTHON := $(VENV)/bin/python
+VENV_PIP := $(VENV)/bin/pip
+VENV_PRE_COMMIT := $(VENV)/bin/pre-commit
+VENV_RUFF := $(VENV)/bin/ruff
+VENV_MYPY := $(VENV)/bin/mypy
+VENV_PYTEST := $(VENV)/bin/pytest
+VENV_MKDOCS := $(VENV)/bin/mkdocs
+VENV_BUILD := $(VENV)/bin/python -m build
+VENV_YASCHED := $(VENV)/bin/yasched
+
+WEB_DIR := apps/web
+NODE_VERSION ?= 20
+NVM_DIR ?= $(HOME)/.nvm
+
+# Agenda served by `make serve` (defaults to the personal agenda).
+AGENDA ?= $(HOME)/.yasched/agenda.yaml
+# Agenda served by `make demo` (the bundled comprehensive example).
+DEMO_AGENDA := resources/example/agenda.yaml
+HOST ?= 127.0.0.1
+PORT ?= 8000
+
+venv:
+	$(PYTHON) -m venv $(VENV)
+
+install: venv
+	$(VENV_PYTHON) -m pip install --upgrade pip
+	$(VENV_PIP) install -e ".[dev]"
+
+install-current:
+	python -m pip install --upgrade pip
+	python -m pip install -e ".[dev]"
+
+# ---------------------------------------------------------------------------
+# One-shot install of EVERYTHING for local (non-Docker) use.
+#   make install-all   -> Python deps (venv) + web deps + build the SPA.
+# Node.js (>= $(NODE_VERSION)) is a system prerequisite pip cannot provide; if it is
+# missing, `require-node` stops with instructions (incl. `make install-node`).
+# The zero-prerequisite alternative is Docker: `make up` (needs only Docker).
+# ---------------------------------------------------------------------------
+install-all: require-node install web-build
+	@echo ""
+	@echo "✔ Installed. Try:  make demo   (bundled example)   or   make run"
+
+# Report which required tools are present, with versions.
+check-tools:
+	@echo "Required tools:"
+	@command -v $(PYTHON) >/dev/null 2>&1 && echo "  python3 : $$($(PYTHON) --version 2>&1)  (need >= 3.12)" || echo "  python3 : MISSING (need >= 3.12)"
+	@command -v node      >/dev/null 2>&1 && echo "  node    : $$(node --version)  (need >= $(NODE_VERSION))"      || echo "  node    : MISSING (need >= $(NODE_VERSION) — run 'make install-node')"
+	@command -v npm       >/dev/null 2>&1 && echo "  npm     : $$(npm --version)"                    || echo "  npm     : MISSING"
+	@command -v docker    >/dev/null 2>&1 && echo "  docker  : present (optional — enables 'make up')" || echo "  docker  : not found (optional)"
+
+# Stop with clear guidance if Node/npm are absent.
+require-node:
+	@command -v npm >/dev/null 2>&1 || { \
+	  echo "ERROR: Node.js (>= $(NODE_VERSION)) and npm are required to build the frontend."; \
+	  echo "Pick one:"; \
+	  echo "  • make install-node             # install Node $(NODE_VERSION) for your user, via nvm (needs network once)"; \
+	  echo "  • Debian/Ubuntu: sudo apt-get install -y nodejs npm"; \
+	  echo "  • macOS (Homebrew): brew install node"; \
+	  echo "  • Windows / no-fuss: use Docker instead ->  make up"; \
+	  exit 1; }
+
+# Optional: install Node via nvm (per-user, no sudo). Needs network once.
+# After this, open a NEW shell (nvm adds itself to your shell profile) or run
+# 'source $(NVM_DIR)/nvm.sh', then 'make install-all'.
+install-node:
+	@if [ ! -s "$(NVM_DIR)/nvm.sh" ]; then \
+	  echo "Installing nvm into $(NVM_DIR) ..."; \
+	  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash; \
+	fi
+	@bash -c '. "$(NVM_DIR)/nvm.sh" && nvm install $(NODE_VERSION) && nvm alias default $(NODE_VERSION) && echo "Node $$(node --version) ready."'
+	@echo "Now run:  source $(NVM_DIR)/nvm.sh   (or open a new terminal), then  make install-all"
+
+ensure-git:
+	@if [ ! -d .git ]; then git init -q; fi
+
+precommit: ensure-git
+	SKIP=$(PRE_COMMIT_SKIP) $(VENV_PRE_COMMIT) run $(PRE_COMMIT_ARGS)
+
+lint:
+	$(VENV_RUFF) check src tests
+	$(VENV_RUFF) format --diff --check src tests
+	$(VENV_MYPY) src/yasched
+
+format:
+	$(VENV_RUFF) check --fix src tests
+	$(VENV_RUFF) format src tests
+
+test:
+	$(VENV_PYTEST) $(TEST_ARGS)
+
+docs:
+	$(VENV_MKDOCS) build --strict
+
+build:
+	$(VENV_BUILD)
+
+test-all: lint format test docs
+
+# ---------------------------------------------------------------------------
+# Run the app locally (fully offline). `make run` is the one-command path.
+# ---------------------------------------------------------------------------
+
+# Build + install + create-agenda-if-missing + serve, in one go.
+run:
+	./run.sh
+
+# Serve your personal agenda (assumes deps installed and frontend built).
+serve:
+	$(VENV_YASCHED) serve --agenda "$(AGENDA)" --host $(HOST) --port $(PORT)
+
+# Serve the bundled comprehensive example (great for a first look).
+demo: web-build
+	$(VENV_YASCHED) serve --agenda "$(DEMO_AGENDA)" --host $(HOST) --port $(PORT)
+
+# ---------------------------------------------------------------------------
+# Docker (easiest up/down). First `make up` builds the image (~1-2 min, needs
+# network once); after that up/down take seconds.
+# ---------------------------------------------------------------------------
+DOCKER_COMPOSE ?= docker compose
+
+# Start detached with an editable default agenda -> http://localhost:$(PORT)
+up:
+	$(DOCKER_COMPOSE) up -d --build
+	@echo "yasched running at http://localhost:$(PORT)  —  stop it with 'make down'"
+
+# Same, but serve the bundled comprehensive example (browse-only).
+up-demo:
+	YASCHED_AGENDA=/app/resources/example/agenda.yaml $(DOCKER_COMPOSE) up -d --build
+	@echo "yasched (demo) at http://localhost:$(PORT)  —  stop it with 'make down'"
+
+# Stop and remove the container + network.
+down:
+	$(DOCKER_COMPOSE) down
+
+# Follow the container logs.
+logs:
+	$(DOCKER_COMPOSE) logs -f
+
+# ---------------------------------------------------------------------------
+# Web frontend (React + Vite)
+# ---------------------------------------------------------------------------
+
+install-web: require-node
+	cd $(WEB_DIR) && npm install
+
+# Production build of the SPA (served by the API).
+web-build: install-web
+	cd $(WEB_DIR) && npm run build
+
+# Dev server with hot reload (proxies /api to the running `yasched serve`).
+web: install-web
+	cd $(WEB_DIR) && npm run dev
+
+clean:
+	rm -rf build dist .coverage .pytest_cache .mypy_cache .ruff_cache site apps/web/dist

@@ -1,41 +1,35 @@
-name: Coverage check
+name: Coverage
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   coverage:
-    name: Coverage (Python 3.12)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
 
-      - name: Install test dependencies
+      - name: Install dependencies
         run: |
+          # Upgrade pip first to keep dependency resolution stable.
           python -m pip install --upgrade pip
-          pip install -e ".[test]"
+          # Install the project with the dependencies needed for coverage runs.
+          python -m pip install -e ".[test]"
 
-      - name: Run tests with coverage
+      - name: Run coverage
         run: |
-          pytest -v --cov=lpdp --cov-report=xml --cov-report=term
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          name: codecov-coverage
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+          # Execute the test suite and emit both terminal and XML coverage reports.
+          pytest --cov=yasched --cov-report=term --cov-report=xml tests
