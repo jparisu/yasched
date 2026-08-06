@@ -1,4 +1,4 @@
-"""Tests for the v4 auto-element generator."""
+"""Tests for the auto-element generator."""
 
 import datetime
 

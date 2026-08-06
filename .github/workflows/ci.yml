@@ -13,8 +13,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        # 3.12 is the floor declared in pyproject; 3.14 is what current
+        # development machines run. Both must stay green.
+        python-version: ["3.12", "3.14"]
 
     steps:
       - name: Check out repository

@@ -32,7 +32,9 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         return 1
 
     app = create_app(path)
-    print(f"Serving {path}\n  API : http://{args.host}:{args.port}/api/agenda")
+    # These URLs are printed on every start, so they must name endpoints that
+    # actually exist (an earlier build advertised /api/agenda, which 404s).
+    print(f"Serving {path}\n  API : http://{args.host}:{args.port}/api/elements")
     print(f"  App : http://{args.host}:{args.port}/   (Ctrl+C to stop)")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0

@@ -1,4 +1,4 @@
-"""Inheritance resolution for the v4 element model."""
+"""Inheritance resolution for the unified element model."""
 
 from yasched.backending.resolving.Resolver import ResolvedElement, Resolver
 

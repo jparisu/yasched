@@ -1,4 +1,4 @@
-"""Tests for the v4 validator."""
+"""Tests for the validator."""
 
 from yasched.backending.loading.ElementLoader import ElementLoader
 from yasched.backending.validating.Validator import Severity, validate_database

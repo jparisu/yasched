@@ -34,6 +34,9 @@ export const NAV: NavItem[] = [
   { id: 'settings', label: 'Settings', category: 'core', icon: Settings, color: '#64748b' },
 
   { id: 'topic-graph', label: 'Graph', category: 'topic', icon: Share2, color: '#ec4899' },
+  // Time elapsed / effort is a *topic* view (time used per topic), not a
+  // schedule one — it answers "where did my time go", which is a topic question.
+  { id: 'effort', label: 'Time elapsed', category: 'topic', icon: Timer, color: '#ec4899' },
   { id: 'topic-manage', label: 'Topics', category: 'topic', icon: ListTree, color: '#ec4899' },
 
   { id: 'calendar', label: 'Calendar', category: 'event', icon: Calendar, color: '#22c55e' },
@@ -42,7 +45,6 @@ export const NAV: NavItem[] = [
   { id: 'event-manage', label: 'Events', category: 'event', icon: Boxes, color: '#22c55e' },
 
   { id: 'timeboard', label: 'Timeboard', category: 'schedule', icon: CalendarClock, color: '#14b8a6' },
-  { id: 'effort', label: 'Effort', category: 'schedule', icon: Timer, color: '#14b8a6' },
   { id: 'schedule-manage', label: 'Schedules', category: 'schedule', icon: Table, color: '#14b8a6' },
 
   { id: 'taskboard', label: 'Task board', category: 'task', icon: Kanban, color: '#8b5cf6' },

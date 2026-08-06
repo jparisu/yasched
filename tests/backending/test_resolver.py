@@ -1,4 +1,4 @@
-"""Tests for the v4 inheritance resolution engine."""
+"""Tests for the inheritance resolution engine."""
 
 from yasched.backending.Database import Database
 from yasched.backending.loading.ElementLoader import ElementLoader

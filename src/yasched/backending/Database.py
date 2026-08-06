@@ -1,4 +1,4 @@
-"""In-memory container for a parsed v4 database.
+"""In-memory container for a parsed database.
 
 The database is a single flat pool of :class:`Element` objects keyed by id, plus
 the attribute definitions. This is the raw, *unresolved* view: ``direct_parents``

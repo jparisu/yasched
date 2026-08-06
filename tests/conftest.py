@@ -1,4 +1,4 @@
-"""Pytest configuration and shared fixtures for the v4 test suite."""
+"""Pytest configuration and shared fixtures for the test suite."""
 
 import sys
 from pathlib import Path
@@ -12,13 +12,13 @@ sys.path.insert(0, str(src_path))
 
 @pytest.fixture
 def example_path():
-    """Path to the comprehensive v4 example agenda."""
-    return Path(__file__).parent.parent / "resources" / "example_v4" / "agenda.yaml"
+    """Path to the comprehensive example agenda."""
+    return Path(__file__).parent.parent / "resources" / "example" / "agenda.yaml"
 
 
 @pytest.fixture
 def example_db(example_path):
-    """The v4 example loaded into a Database."""
+    """The example loaded into a Database."""
     from yasched.backending.loading.ElementLoader import ElementLoader
 
     return ElementLoader.load(example_path)
@@ -26,7 +26,7 @@ def example_db(example_path):
 
 @pytest.fixture
 def example_resolver(example_db):
-    """A Resolver over the v4 example."""
+    """A Resolver over the example."""
     from yasched.backending.resolving.Resolver import Resolver
 
     return Resolver(example_db)

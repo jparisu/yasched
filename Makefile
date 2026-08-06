@@ -24,7 +24,7 @@ NVM_DIR ?= $(HOME)/.nvm
 # Agenda served by `make serve` (defaults to the personal agenda).
 AGENDA ?= $(HOME)/.yasched/agenda.yaml
 # Agenda served by `make demo` (the bundled comprehensive example).
-DEMO_AGENDA := resources/example_v4/agenda.yaml
+DEMO_AGENDA := resources/example/agenda.yaml
 HOST ?= 127.0.0.1
 PORT ?= 8000
 
@@ -135,7 +135,7 @@ up:
 
 # Same, but serve the bundled comprehensive example (browse-only).
 up-demo:
-	YASCHED_AGENDA=/app/resources/example_v4/agenda.yaml $(DOCKER_COMPOSE) up -d --build
+	YASCHED_AGENDA=/app/resources/example/agenda.yaml $(DOCKER_COMPOSE) up -d --build
 	@echo "yasched (demo) at http://localhost:$(PORT)  —  stop it with 'make down'"
 
 # Stop and remove the container + network.

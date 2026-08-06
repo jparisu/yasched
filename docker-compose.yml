@@ -22,6 +22,6 @@ services:
       # Personal agenda persisted on the host and editable there.
       - ./data:/data
     environment:
-      # Override to /app/resources/teacher_example/teacher_main.yaml for the demo.
+      # Override to /app/resources/example/agenda.yaml for the demo (see `make up-demo`).
       YASCHED_AGENDA: ${YASCHED_AGENDA:-/data/agenda.yaml}
     restart: unless-stopped

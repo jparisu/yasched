@@ -1,5 +1,5 @@
 # =============================================================================
-# Your personal yasched agenda (v4).
+# Your personal yasched agenda.
 #
 # `yasched init` copies this file to ~/.yasched/agenda.yaml. Edit it freely,
 # then run `yasched serve` to view it locally in your browser.
@@ -10,7 +10,11 @@
 # through the parents becomes the element's Topic (used for grouping). The
 # built-in `AllTopic` is the root and holds app-wide defaults.
 #
-# Full feature tour: resources/example_v4/ in the yasched repo.
+# !! HEADS UP: these comments will disappear the first time you save from the
+# !! app, which rewrites this file from its internal model. Keep notes in an
+# !! element's `description` attribute instead — that round-trips safely.
+#
+# Full feature tour: resources/example/ in the yasched repo.
 # =============================================================================
 
 elements:

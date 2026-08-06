@@ -1,4 +1,4 @@
-"""Tests for the v4 (x)yml loader."""
+"""Tests for the (x)yml loader."""
 
 import pytest
 

@@ -1,4 +1,4 @@
-"""Resolve the v4 inheritance model into effective values.
+"""Resolve the inheritance model into effective values.
 
 Three derived notions drive everything:
 

@@ -1,4 +1,4 @@
-// HTTP client for the v4 API. One process serves this SPA + the API, so all
+// HTTP client for the API. One process serves this SPA + the API, so all
 // requests are same-origin (no CORS, no base URL config).
 
 import {

@@ -58,17 +58,26 @@ The database is a single YAML file that the app reads **and writes**:
 Agendas that use xyml includes (`__file__` / `__ext__`) load fine; the first save
 from the app flattens them into the single file.
 
+!!! warning "Comments are lost when the app saves"
+
+    The file is rewritten from the model, so any YAML comment you wrote is gone
+    after the first save from the app — the commented header created by
+    `yasched init` included. Use an element's `description` attribute for notes
+    you want to keep, or keep a copy of your hand-written file. See
+    [Agenda format](agenda-format.md#comments-are-not-preserved-on-save).
+
 ## Panels
 
 Grouped in the left sidebar by category:
 
 - **Core** — *Main* (upcoming events, deadlines, priority tasks), *Stats*,
   *Focus* (focused elements), *Attributes* (the attribute schema), *Settings*.
-- **Topic** — *Graph* (nested/tree topic map), *Topics* (management).
-- **Event** — *Calendar* (month/week), *Agenda* (paper-week), *Events*
-  (management).
-- **Schedule** — *Timeboard* (schedules + their generated occurrences), *Effort*
-  (time used per topic, by period), *Schedules* (management).
+- **Topic** — *Graph* (nested/tree topic map), *Time elapsed* (time used per
+  topic, by period), *Topics* (management).
+- **Event** — *Calendar* (month/week), *Agenda* (paper-week), *Timeline*
+  (events on a zoomable line), *Events* (management).
+- **Schedule** — *Timeboard* (schedules + their generated occurrences),
+  *Schedules* (management).
 - **Task** — *Task board* (kanban), *Tasks* (management).
 
 ## Validation

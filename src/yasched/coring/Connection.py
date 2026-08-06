@@ -3,7 +3,7 @@
 Connections live inside the built-in ``connections`` attribute (a list of
 ``Connection``). They are stored once, on the source element, and surfaced on
 both endpoints by the UI. They never participate in inheritance and never
-change another element's computed state (informational only in v4).
+change another element's computed state (informational only).
 """
 
 from __future__ import annotations

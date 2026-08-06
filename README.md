@@ -74,7 +74,7 @@ refresh the page, and your schedule updates.
 Want to explore a fully-featured example first?
 
 ```bash
-make demo        # serves resources/example_v4 (uses every feature)
+make demo        # serves resources/example (a broad feature tour)
 ```
 
 ### With Docker (easy up / down)
@@ -117,7 +117,7 @@ Everything you need to run it locally:
 | `./run.sh --reinstall` / `--rebuild` | Reinstall after dependency changes / rebuild the frontend |
 | `HOST=0.0.0.0 PORT=9000 ./run.sh` | Override bind host/port (use the same `PORT` for `--stop`/`--status`) |
 | `make run` | Alias for `./run.sh` |
-| `make demo` | Serve the bundled `resources/example_v4` (every feature) |
+| `make demo` | Serve the bundled `resources/example` (a broad feature tour) |
 | `make serve` | Serve your personal agenda (assumes deps installed + frontend built) |
 | `make web-build` | Build the frontend bundle only |
 | `make web` | Frontend dev server with hot reload (proxies `/api` → `:8000`) |
@@ -137,7 +137,7 @@ yasched check --agenda FILE               # load + validate, print a summary
 `--agenda` defaults to `$YASCHED_AGENDA`, then `~/.yasched/agenda.yaml`. Then
 open <http://127.0.0.1:8000>.
 
-## The agenda file (v4)
+## The agenda file
 
 An agenda is a YAML document with one **flat list of elements** plus optional
 attribute definitions:
@@ -166,9 +166,16 @@ Schedules generate events/tasks, and deadlines/reminders generate events, as
 split with the xyml `__file__` / `__ext__` includes; the app flattens them into
 one file on first save.
 
-See [`resources/example_v4/agenda.yaml`](resources/example_v4/agenda.yaml) for a
-feature tour and [`devs/v4/v4-panel-requirements.md`](devs/v4/v4-panel-requirements.md)
-for the full spec.
+> ⚠️ **YAML comments are not preserved.** The app rewrites the file from its
+> internal model, so comments (including the commented header from
+> `yasched init`) disappear the first time you save from the app. Keep notes in
+> an element's `description` attribute — that is part of the model and
+> round-trips safely. Hand-editing without ever saving from the app is lossless.
+> Fixing this properly is tracked as `TODO(comments)` in `ElementSerializer`.
+
+See [`resources/example/agenda.yaml`](resources/example/agenda.yaml) for a
+worked example, and the [agenda format reference](docs/agenda-format.md) for
+every key.
 
 ## Architecture
 
@@ -185,10 +192,10 @@ serving     FastAPI app + view DTOs + `yasched` CLI, serving the React SPA
 ```
 
 The React frontend (`apps/web`) talks to the API over HTTP and is served as
-static files by the same process — one port, no CORS. See
-[`devs/v4/v4-architecture.md`](devs/v4/v4-architecture.md).
+static files by the same process — one port, no CORS. See the
+[architecture notes](docs/architecture.md).
 
-> **Status:** the v4 backend, HTTP API, CLI, test suite, and a v4-native React
+> **Status (0.4.0):** the backend, HTTP API, CLI, test suite, and the React
 > frontend (category panels over `/api/elements`) are implemented. Build the
 > frontend with `cd apps/web && npm install && npm run build`.
 
@@ -206,6 +213,20 @@ make docs        # build the MkDocs site
 
 cd apps/web && npm run typecheck && npm run lint && npm run build   # frontend checks
 ```
+
+### Fonts (maintainers only)
+
+The app must never contact a font CDN, so web fonts are **vendored** into
+`apps/web/public/fonts/` and committed. Re-run this only when you add a family
+or a weight — it is the one step that needs the internet:
+
+```bash
+cd apps/web && ./scripts/fetch-fonts.sh   # downloads .woff2 + regenerates src/fonts.css
+```
+
+Until it has been run once, `src/fonts.css` carries no `@font-face` rules and the
+app falls back to the system font stack — cosmetic only, and still fully local.
+CI fails the build if any CDN reference appears in `index.html`, `src/`, or `dist/`.
 
 ## License
 

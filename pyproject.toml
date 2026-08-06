@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yasched"
-version = "4.0.0"
-description = "Version 4.0 of the My Yaml Scheduler project"
+version = "0.4.0"
+description = "Local-first, YAML-based personal scheduler with a colorful local web app"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -19,6 +19,8 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
 ]
 dependencies = [

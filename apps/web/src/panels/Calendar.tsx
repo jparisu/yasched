@@ -7,6 +7,11 @@ import { byType, isCancelled, whenOf } from '../lib/elements';
 import { ElementView } from '../ui/ElementView';
 import { addDays, isoDate, monthName, sameDay, startOfWeek, today, weekdayShort } from '../lib/format';
 
+// TODO(v0.5): the spec asks for a day / week / month / year selector. Only
+// month and week are implemented; `day` and `year` are deliberately deferred —
+// the Timeline panel already covers most of what a day view would show, and a
+// year view needs a denser element renderer than ElementView currently offers.
+// Adding them means extending this union, `shift()`, and the render switch below.
 type View = 'month' | 'week';
 
 export function Calendar({ onOpen }: { onOpen: (id: string) => void }) {

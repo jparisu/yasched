@@ -1,4 +1,4 @@
-// v4 API types — mirror the shapes served by src/yasched/serving.
+// API types — mirror the shapes served by src/yasched/serving.
 
 export type ElementType = 'topic' | 'event' | 'task' | 'schedule';
 

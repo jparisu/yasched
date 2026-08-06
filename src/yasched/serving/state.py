@@ -1,7 +1,7 @@
 """Holds the loaded database, reloads it, and applies CRUD mutations.
 
-Unlike v3, v4 is always writable: saving flattens any multi-file xyml source into
-the single canonical file at ``agenda_path`` (per the v4 persistence decision).
+The agenda is always writable: saving flattens any multi-file xyml source into
+the single canonical file at ``agenda_path``.
 Promotion of a virtual element is just an upsert with its deterministic id.
 """
 
@@ -67,6 +67,9 @@ class AppState:
         self.save()
 
     def save(self) -> None:
+        # WARNING: this rewrites the file from the model, so YAML comments in the
+        # user's agenda do not survive the first save. See the TODO(comments) in
+        # ElementSerializer.to_yaml for the options being considered.
         self.agenda_path.parent.mkdir(parents=True, exist_ok=True)
         self.agenda_path.write_text(ElementSerializer.to_yaml(self.db), encoding="utf-8")
         self.db.multi_file = False  # source is now a single flattened file

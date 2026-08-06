@@ -1,4 +1,4 @@
-"""(x)yml parsing and serialization for the v4 element model."""
+"""(x)yml parsing and serialization for the unified element model."""
 
 from yasched.backending.loading.ElementLoader import DatabaseLoadError, ElementLoader
 from yasched.backending.loading.ElementSerializer import ElementSerializer

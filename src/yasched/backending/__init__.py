@@ -1,4 +1,4 @@
-"""Loading, resolution, and generation for the v4 element model.
+"""Loading, resolution, and generation for the unified element model.
 
 ``backending`` imports ``coring`` and ``utilizing``. It parses (x)yml documents
 into a :class:`Database`, resolves the inheritance model into effective values,

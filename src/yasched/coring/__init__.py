@@ -1,4 +1,4 @@
-"""Core domain data holders for the unified v4 element model.
+"""Core domain data holders for the unified element model.
 
 Plain data holders parsed from the configuration. They do not resolve
 references, apply inheritance, or generate auto-elements — that is

@@ -48,9 +48,9 @@ def find_personal_template() -> Path | None:
 # Fallback used by `yasched init` if the repo template cannot be located
 # (e.g. installed as a wheel without the resources tree).
 FALLBACK_TEMPLATE = """\
-# Your personal yasched agenda (v4). Edit freely, then run `yasched serve`.
+# Your personal yasched agenda. Edit freely, then run `yasched serve`.
 # Everything is an Element; `directParents` drives inheritance (first = MainParent).
-# Full model reference: resources/example_v4/ in the yasched repo.
+# Full model reference: resources/example/ in the yasched repo.
 
 elements:
   # AllTopic is the built-in root; customize it to set app-wide defaults.

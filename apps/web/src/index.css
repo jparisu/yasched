@@ -1,3 +1,8 @@
+/* Self-hosted fonts. Must stay first: CSS requires @import before other rules.
+   Vite inlines this at build time, so the bundle carries the @font-face rules
+   and the app never reaches out to a font CDN. */
+@import './fonts.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

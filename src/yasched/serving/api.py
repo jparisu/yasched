@@ -1,7 +1,7 @@
 """FastAPI application: local API + static frontend, one process, no CORS.
 
 The app binds to localhost by default and makes no outbound network calls.
-The API speaks the unified v4 element model.
+The API speaks the unified element model.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from yasched._version import __version__
 from yasched.backending.loading.ElementSerializer import ElementSerializer
 from yasched.backending.validating.Validator import validate_database
 from yasched.serving import config
@@ -23,7 +24,7 @@ from yasched.serving.views import build_effort, build_payload
 _NO_FRONTEND_HTML = """\
 <!doctype html><html><head><title>yasched</title></head><body
  style="font-family:system-ui;max-width:40rem;margin:4rem auto;line-height:1.6">
-<h1>yasched v4 is running</h1>
+<h1>yasched is running</h1>
 <p>The API is live at <a href="/api/elements">/api/elements</a>, but the frontend
 has not been built yet.</p>
 <pre>make web-build</pre>
@@ -44,7 +45,8 @@ def _parse_date(value: str | None) -> datetime.date | None:
 def create_app(agenda_path: Path) -> FastAPI:
     """Build the FastAPI app bound to a specific database file."""
     state = AppState(agenda_path)
-    app = FastAPI(title="yasched", version="4.0.0")
+    # Single source of truth for the version: yasched/_version.py.
+    app = FastAPI(title="yasched", version=__version__)
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:

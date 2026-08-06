@@ -1,7 +1,7 @@
 """Serialize a :class:`Database` back to a single canonical YAML document.
 
 Only real (non-virtual) elements are written. Multi-file xyml sources are
-flattened into one file the first time the app saves (per the v4 spec).
+flattened into one file the first time the app saves.
 """
 
 from __future__ import annotations
@@ -59,6 +59,27 @@ class ElementSerializer:
 
     @staticmethod
     def to_yaml(db: Database) -> str:
+        # TODO(comments): this rebuilds the document from the model, so ANY
+        # comment the user wrote in their agenda file is lost on the first save.
+        # That is real data loss — the shipped personal template is itself a
+        # commented tutorial, and the docs invite hand-editing. Options, in the
+        # order they are worth trying:
+        #
+        #  1. ruamel.yaml round-trip (the real fix). Load with typ="rt" and keep
+        #     the CommentedMap alongside the Database, then PATCH that tree in
+        #     place on save instead of re-emitting from the model. Comments,
+        #     key order and formatting all survive. Costs a new runtime
+        #     dependency and a rework of the load/save path, because today the
+        #     original node tree is discarded at parse time.
+        #  2. Back up once before the first write (agenda.yaml -> agenda.yaml.orig).
+        #     Does not preserve anything, but makes the loss recoverable. Cheap;
+        #     a good stopgap to pair with 1.
+        #  3. Push per-element prose into the model's `description` attribute,
+        #     which already round-trips. Covers "what is this element" comments
+        #     but not file- or section-level ones.
+        #
+        # Until then the behaviour is documented as a warning in the README, the
+        # agenda-format docs, and the personal template header.
         return yaml.safe_dump(
             ElementSerializer.to_dict(db),
             sort_keys=False,

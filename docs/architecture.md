@@ -64,8 +64,7 @@ the running `yasched serve`.
 ## Local-only guarantee
 
 The API binds to `127.0.0.1` by default and makes no outbound calls. The
-frontend bundles all assets — no CDNs, external fonts, or analytics.
-
-See also [`devs/v4/v4-architecture.md`](https://github.com/jparisu/yasched) and
-[`devs/v4/v4-panel-requirements.md`](https://github.com/jparisu/yasched) in the
-repository.
+frontend bundles all assets — no CDNs, external fonts, or analytics. Web fonts
+are vendored into `apps/web/public/fonts/` by `apps/web/scripts/fetch-fonts.sh`,
+a maintainer-only script; the shipped app never contacts a font CDN. CI enforces
+this (the *App → Frontend build* workflow fails on any CDN reference).

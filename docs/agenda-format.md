@@ -74,7 +74,7 @@ Always available (per element type):
 | `connections` | list | all (never inherits) |
 | `start`, `end`, `duration`, `location`, `reminders`, `class`, `timeSpent` | — | event |
 | `status`, `priority`, `difficulty`, `deadline`, `reminders`, `marked`, `timeSpent` | — | task |
-| `timeSpent` | duration | event, task — time used, aggregated by the Effort panels (events fall back to `duration`) |
+| `timeSpent` | duration | event, task — time used, aggregated by the *Time elapsed* panel (events fall back to `duration`) |
 | `generates`, `kind`, `startDate`, `endDate`, `weekDays`, `monthDays`, `yearlyDays`, `time`, `duration` | — | schedule |
 
 ## Value formats
@@ -131,6 +131,21 @@ connections:
   - depends-on-me                               # shorthand string → relation "related"
 ```
 
+## ⚠️ Comments are not preserved on save
+
+The app rewrites the agenda file from its internal model, so **YAML comments are
+lost the first time you save from the app** — including the commented header that
+`yasched init` gives you. Blank lines and key order are normalised too.
+
+If you keep notes in your agenda, either:
+
+- keep a copy of your hand-written file (`cp agenda.yaml agenda.yaml.orig`), or
+- put the note in the element's `description` attribute instead — that is part of
+  the model, so it round-trips safely and shows up in the app.
+
+Editing the file by hand and never saving from the app preserves everything.
+Preserving comments across saves is a known limitation we intend to fix.
+
 ## Splitting files (xyml)
 
 Split an agenda across files with `__file__` (splice in place) and `__ext__`
@@ -144,5 +159,5 @@ elements:
 ```
 
 For a complete, working example that uses every feature, see
-[`resources/example_v4/agenda.yaml`](https://github.com/jparisu/yasched) in the
+[`resources/example/agenda.yaml`](https://github.com/jparisu/yasched) in the
 repository.

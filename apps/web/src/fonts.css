@@ -1,0 +1,14 @@
+/* ===========================================================================
+   Self-hosted @font-face rules.
+
+   PLACEHOLDER — no font files have been vendored yet. Until a maintainer runs
+
+       cd apps/web && ./scripts/fetch-fonts.sh
+
+   this file is empty of @font-face rules and the app falls back to the system
+   font stack declared in index.css. That is a cosmetic downgrade only; the app
+   is fully functional, and — unlike a Google Fonts <link> — it stays local.
+
+   Once the script has run this file is GENERATED (do not edit by hand) and every
+   url() points at public/fonts/, so the app makes no outbound network calls.
+   =========================================================================== */

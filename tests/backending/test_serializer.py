@@ -1,4 +1,4 @@
-"""Tests for the v4 serializer (write-back / flatten)."""
+"""Tests for the serializer (write-back / flatten)."""
 
 import datetime
 

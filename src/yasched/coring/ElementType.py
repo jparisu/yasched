@@ -1,4 +1,4 @@
-"""The four element types of the unified v4 model."""
+"""The four element types of the unified model."""
 
 from __future__ import annotations
 

@@ -35,7 +35,7 @@ When working in this project, keep this order of importance:
     - Public API docs are generated from docstrings in `src/`.
     - User guides and other public-facing documentation are written in markdown in `docs/`.
     - The documentation will be hosted in ReadTheDocs.
-- Design lives in `devs/`
+- Design lives in `devs/` — **local only, untracked** (see `.gitignore`); it is not published to GitHub.
     - `devs/` follows same directory structure as `src/` for design docs related to specific modules.
     - Design artifacts must reference the same naming convention used in `src/`, including `CamelCase` class files, `_shared.py`, and `snake_case` shared modules.
     - Internal text design docs live in markdown files called `.dsg`.

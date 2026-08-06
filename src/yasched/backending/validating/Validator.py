@@ -1,4 +1,4 @@
-"""Consistency checks over a parsed v4 :class:`Database`.
+"""Consistency checks over a parsed :class:`Database`.
 
 Reports structured :class:`Issue`s (errors and warnings) without mutating the
 database. Errors indicate broken references; warnings indicate likely mistakes

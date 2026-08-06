@@ -1,4 +1,4 @@
-"""The universal Element — the single data structure for everything in v4.
+"""The universal Element — the single data structure for everything.
 
 ``type`` discriminates behavior and which attributes are valid. ``id`` is the
 only value that is not an attribute (identity must never be inherited or

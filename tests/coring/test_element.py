@@ -1,4 +1,4 @@
-"""Tests for the v4 coring value objects."""
+"""Tests for the coring value objects."""
 
 import pytest
 

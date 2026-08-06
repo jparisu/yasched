@@ -1,4 +1,4 @@
-"""Parse an (x)yml document into a :class:`Database` of v4 ``Element`` objects.
+"""Parse an (x)yml document into a :class:`Database` of ``Element`` objects.
 
 Parsing is lenient: unknown keys are ignored and missing optional keys fall back
 to sensible defaults. Reading still supports xyml ``__file__`` / ``__ext__``
@@ -54,7 +54,7 @@ def _opt_color(value: Any) -> Color | None:
 
 
 class ElementLoader:
-    """Loads and parses a v4 database document."""
+    """Loads and parses a database document."""
 
     @staticmethod
     def load(path: str | Path) -> Database:
