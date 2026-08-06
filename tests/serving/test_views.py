@@ -1,62 +1,37 @@
-"""Tests for the view layer (resolved model -> frontend DTOs)."""
+"""Tests for the pure view/DTO layer (no FastAPI)."""
 
 import datetime
 
 from yasched.serving.views import build_payload
 
-
-def test_payload_shape(teacher_db):
-    p = build_payload(teacher_db)
-    assert set(p) >= {"topics", "tasks", "events", "deadlines", "window"}
-    assert len(p["topics"]) == 7
-    assert len(p["tasks"]) == 10
-    assert p["events"], "expected some event occurrences in the default window"
+WINDOW = (datetime.date(2026, 9, 1), datetime.date(2026, 10, 31))
 
 
-def test_task_priority_and_status_mapping(teacher_db):
-    p = build_payload(teacher_db)
-    by_id = {t["id"]: t for t in p["tasks"]}
-    # priority is emitted as the raw numeric value (bucketing happens in the UI)
-    assert by_id["grade-midterm"]["priority"] == 5
-    # status done -> done ; in-progress -> doing
-    assert by_id["write-syllabus"]["status"] == "done"
-    assert by_id["prepare-math101"]["status"] == "doing"
+def test_payload_shape(example_db):
+    payload = build_payload(example_db, *WINDOW)
+    assert set(payload) == {"window", "definitions", "elements"}
+    assert payload["window"]["start"] == "2026-09-01"
+    assert any(d["name"] == "effort" and not d["builtin"] for d in payload["definitions"])
 
 
-def test_task_topic_and_deadline(teacher_db):
-    p = build_payload(teacher_db)
-    by_id = {t["id"]: t for t in p["tasks"]}
-    assert by_id["submit-grades"]["topicId"] == "math-101"  # first of multi-topic
-    assert by_id["grade-midterm"]["deadline"] == "2026-10-27"
+def test_payload_includes_virtual_occurrences(example_db):
+    payload = build_payload(example_db, *WINDOW)
+    ids = {e["id"] for e in payload["elements"]}
+    assert any(i.startswith("math-101-lecture#") for i in ids)  # generated lectures present
+    virtual = [e for e in payload["elements"] if e["virtual"]]
+    assert virtual, "expected generated virtual elements"
 
 
-def test_style_shape(teacher_db):
-    p = build_payload(teacher_db)
-    style = p["topics"][0]["style"]
-    assert set(style) == {"backgroundColor", "leftColor", "shape"}
-    assert style["leftColor"].startswith("#")
-    assert style["backgroundColor"].startswith("rgba(")
+def test_connections_surface_on_both_endpoints(example_db):
+    payload = build_payload(example_db, *WINDOW)
+    by_id = {e["id"]: e for e in payload["elements"]}
+    # write-paper --follows--> department-review
+    assert {"to": "department-review", "relation": "follows"} in by_id["write-paper"]["connections"]
+    assert {"from": "write-paper", "relation": "follows"} in by_id["department-review"]["incoming"]
 
 
-def test_deadlines_derived_from_tasks(teacher_db):
-    p = build_payload(teacher_db)
-    ids = {d["id"] for d in p["deadlines"]}
-    assert "grade-midterm::deadline" in ids
-    # a task without a deadline attribute produces no deadline entry
-    assert "make-slides::deadline" not in ids
-
-
-def test_recurring_flag(teacher_db):
-    p = build_payload(teacher_db)
-    lectures = [e for e in p["events"] if e["title"] == "Math 101 Lecture"]
-    assert lectures and all(e["recurring"] for e in lectures)
-
-
-def test_window_query(teacher_db):
-    start = datetime.date(2026, 10, 1)
-    end = datetime.date(2026, 10, 31)
-    p = build_payload(teacher_db, start, end)
-    assert p["window"] == {"start": "2026-10-01", "end": "2026-10-31"}
-    assert any("midterm-exam" in e["id"] for e in p["events"])
-    # events outside the window are excluded
-    assert all("2026-10" in e["date"] for e in p["events"])
+def test_resolved_layout_included(example_db):
+    payload = build_payload(example_db, *WINDOW)
+    by_id = {e["id"]: e for e in payload["elements"]}
+    # grade-midterm has danger=true -> red border via attribute-layout
+    assert by_id["grade-midterm"]["layout"]["border"]["color"] == "#ef4444"

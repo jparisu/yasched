@@ -1,85 +1,98 @@
-"""Tests for the consistency Validator."""
+"""Tests for the v4 validator."""
 
-from yasched.backending.loading.DatabaseLoader import DatabaseLoader
+from yasched.backending.loading.ElementLoader import ElementLoader
 from yasched.backending.validating.Validator import Severity, validate_database
 
 
-def _codes(text: str) -> set[str]:
-    db = DatabaseLoader.loads(text)
+def _codes(doc):
+    db = ElementLoader.from_dict(doc)
     return {i.code for i in validate_database(db)}
 
 
-def test_teacher_example_is_clean(teacher_db):
-    issues = validate_database(teacher_db)
-    errors = [i for i in issues if i.severity is Severity.ERROR]
-    assert errors == [], f"unexpected errors: {[i.message for i in errors]}"
-
-
-def test_unknown_topic_reference():
-    assert "unknown-topic" in _codes("tasks:\n  - id: t\n    topic_ids: [ghost]\n")
-
-
-def test_unknown_trait_reference():
-    assert "unknown-trait" in _codes("tasks:\n  - id: t\n    traits: [ghost]\n")
-
-
-def test_unknown_parent():
-    assert "unknown-parent" in _codes("tasks:\n  - id: t\n    parent_id: ghost\n")
-
-
-def test_unknown_relation_and_event_link():
+def test_unknown_parent_and_self_parent():
     codes = _codes(
-        "tasks:\n"
-        "  - id: t\n"
-        "    relations: [{task: ghost, type: requires}]\n"
-        "    event_links: [{event: ghost}]\n"
+        {
+            "elements": [
+                {"id": "AllTopic", "type": "topic"},
+                {"id": "a", "type": "task", "directParents": ["ghost"]},
+                {"id": "b", "type": "task", "directParents": ["b"]},
+            ]
+        }
     )
-    assert "unknown-relation" in codes
-    assert "unknown-event-link" in codes
+    assert "unknown-parent" in codes
+    assert "self-parent" in codes
 
 
-def test_self_parent():
-    assert "self-parent" in _codes("topics:\n  - id: a\n    parent_ids: [a]\n")
-
-
-def test_topic_cycle():
-    codes = _codes("topics:\n  - id: a\n    parent_ids: [b]\n  - id: b\n    parent_ids: [a]\n")
-    assert "topic-cycle" in codes
-
-
-def test_task_cycle():
-    codes = _codes("tasks:\n  - id: a\n    parent_id: b\n  - id: b\n    parent_id: a\n")
-    assert "task-cycle" in codes
-
-
-def test_bad_weekly_schedule():
-    codes = _codes("events:\n  - id: e\n    schedules: [{type: weekly, week_days: []}]\n")
-    assert "bad-schedule" in codes
-
-
-def test_bad_multi_day_order():
+def test_parent_cycle():
     codes = _codes(
-        "events:\n"
-        "  - id: e\n"
-        "    schedules: [{type: multi_day, start_day: '2026-05-10', end_day: '2026-05-01'}]\n"
+        {
+            "elements": [
+                {"id": "AllTopic", "type": "topic"},
+                {"id": "b", "type": "task", "directParents": ["c"]},
+                {"id": "c", "type": "task", "directParents": ["b"]},
+            ]
+        }
     )
-    assert "bad-schedule" in codes
+    assert "parent-cycle" in codes
 
 
-def test_duplicate_id_warning():
-    db = DatabaseLoader.loads("topics:\n  - id: a\n  - id: a\n")
-    issues = validate_database(db)
-    dup = [i for i in issues if i.code == "duplicate-id"]
-    assert dup and dup[0].severity is Severity.WARNING
+def test_unknown_connection_and_out_of_range():
+    codes = _codes(
+        {
+            "elements": [
+                {"id": "AllTopic", "type": "topic"},
+                {
+                    "id": "t",
+                    "type": "task",
+                    "attributes": {
+                        "priority": 99,
+                        "connections": [{"to": "nope", "relation": "x"}],
+                    },
+                },
+            ]
+        }
+    )
+    assert "unknown-connection" in codes
+    assert "out-of-range" in codes
 
 
-def test_redundant_time_warning():
-    db = DatabaseLoader.loads(
-        "events:\n"
-        "  - id: e\n"
-        "    schedules:\n"
-        "      - {type: weekly, week_days: [monday], start_time: '10:00',"
-        " end_time: '11:00', duration: 30m}\n"
+def test_detached_occurrence():
+    codes = _codes(
+        {
+            "elements": [
+                {"id": "AllTopic", "type": "topic"},
+                {"id": "x#deadline", "type": "event"},
+            ]
+        }
+    )
+    assert "detached-occurrence" in codes
+
+
+def test_clean_document_has_no_errors():
+    db = ElementLoader.from_dict(
+        {
+            "elements": [
+                {"id": "AllTopic", "type": "topic"},
+                {
+                    "id": "t",
+                    "type": "task",
+                    "directParents": ["AllTopic"],
+                    "attributes": {"priority": 3},
+                },
+            ]
+        }
     )
     issues = validate_database(db)
-    assert any(i.code == "schedule-redundant-time" for i in issues)
+    assert not [i for i in issues if i.severity is Severity.ERROR]
+
+
+def test_topic_defaults_not_flagged_as_wrong_type():
+    # A topic holding a task-only attribute (priority) as a default must NOT warn.
+    codes = _codes(
+        {
+            "elements": [
+                {"id": "AllTopic", "type": "topic", "attributes": {"priority": 3}},
+            ]
+        }
+    )
+    assert "wrong-type-attribute" not in codes

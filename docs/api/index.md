@@ -2,27 +2,31 @@
 
 Auto-generated from docstrings.
 
-## coring — data holders
+## coring — the unified element model
 
-::: yasched.coring.Topic.Topic
+::: yasched.coring.Element.Element
 
-::: yasched.coring.Task.Task
+::: yasched.coring.ElementType.ElementType
 
-::: yasched.coring.Event.Event
+::: yasched.coring.AttributeDefinition.AttributeDefinition
 
-::: yasched.coring.Trait.Trait
+::: yasched.coring.Connection.Connection
 
 ::: yasched.coring.Layout.Layout
 
-## backending — load, resolve, schedule
+## backending — load, resolve, generate, validate
 
 ::: yasched.backending.Database.Database
 
-::: yasched.backending.loading.DatabaseLoader.DatabaseLoader
+::: yasched.backending.loading.ElementLoader.ElementLoader
+
+::: yasched.backending.loading.ElementSerializer.ElementSerializer
 
 ::: yasched.backending.resolving.Resolver.Resolver
 
-::: yasched.backending.scheduling.Occurrences.build_event_occurrences
+::: yasched.backending.generating.Generator.Generator
+
+::: yasched.backending.validating.Validator.Validator
 
 ## serving — API & CLI
 

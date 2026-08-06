@@ -219,3 +219,6 @@ tmp/
 
 # Docker compose agenda volume
 /data/
+
+# Personal, private agenda — NEVER commit this (kept only on your machine)
+/private/

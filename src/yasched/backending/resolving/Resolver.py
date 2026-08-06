@@ -1,17 +1,19 @@
-"""Resolve inheritance, traits, and merges into effective values.
+"""Resolve the v4 inheritance model into effective values.
 
-Precedence, lowest → highest (topics ancestors-first in listed order; traits in
-listed order)::
+Three derived notions drive everything:
 
-    default  <  topic(s)  <  traits  <  parent  <  own
+* ``Parents(E)`` — pre-order DFS over ``direct_parents`` with one global visited
+  set (branch-first: a branch is fully expanded before the next sibling).
+  ``AllTopic`` is appended last so defaults always resolve.
+* ``MainParent(E)`` — ``Parents(E)[0]`` (the first direct parent).
+* ``Topic(E)`` — the first ``topic``-typed element in ``Parents(E)``.
 
-Merge rules per namespace:
+Attribute resolution: own value wins, else the first parent in ``Parents`` that
+defines it (skipping non-inheriting attributes such as ``connections``).
 
-* ``attributes`` — replace by key (higher layer wins per key)
-* ``tags``       — union (accumulate, order-preserving, de-duplicated)
-* ``layout``     — backgrounds compose by concrete ``type``; other fields higher-wins
+Layout resolution, per field, first-defined-wins::
 
-Cycles (topic DAG or task/event parent) are guarded by a visited set and skipped.
+    element's own  >  attribute-layout  >  Parents (in Parents order)
 """
 
 from __future__ import annotations
@@ -19,201 +21,163 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from yasched.backending.Database import Database
-from yasched.coring.Event import Event
+from yasched.backending.Database import ALL_TOPIC_ID, Database
+from yasched.coring.AttributeDefinition import NON_INHERITING
+from yasched.coring.Connection import Connection
+from yasched.coring.Element import Element
+from yasched.coring.ElementType import ElementType
 from yasched.coring.Layout import Layout
-from yasched.coring.Task import Task
-from yasched.coring.Topic import Topic
-
-# A raw layer contributed by a single node: (attributes, tags, layout).
-_Layer = tuple[dict[str, Any], list[str], Layout | None]
 
 
 @dataclass
-class Resolved:
-    """An entity with its effective (post-inheritance) values."""
+class ResolvedElement:
+    """An element with its effective (post-inheritance) values."""
 
-    source: Topic | Event | Task
+    id: str
+    type: ElementType
     attributes: dict[str, Any] = field(default_factory=dict)
-    tags: list[str] = field(default_factory=list)
     layout: Layout = field(default_factory=Layout)
-    # Effective topics: a subtask/sub-event with no topics of its own inherits
-    # them from its parent chain (empty for topics themselves).
-    topic_ids: list[str] = field(default_factory=list)
+    parents: list[str] = field(default_factory=list)
+    main_parent: str | None = None
+    topic: str | None = None
+    virtual: bool = False
 
     @property
-    def id(self) -> str:
-        return self.source.id
+    def name(self) -> Any:
+        return self.attributes.get("name")
 
     @property
-    def name(self) -> str:
-        return self.source.name
+    def description(self) -> Any:
+        return self.attributes.get("description")
 
-    @property
-    def description(self) -> str | None:
-        return self.source.description
-
-
-def _union_tags(layers: list[_Layer]) -> list[str]:
-    seen: dict[str, None] = {}
-    for _attrs, tags, _layout in layers:
-        for tag in tags:
-            seen.setdefault(tag, None)
-    return list(seen)
-
-
-def _merge_attributes(layers: list[_Layer]) -> dict[str, Any]:
-    merged: dict[str, Any] = {}
-    for attrs, _tags, _layout in layers:
-        merged.update(attrs)
-    return merged
-
-
-def _merge_layouts(layers: list[_Layer]) -> Layout:
-    bg_by_type: dict[str, Any] = {}
-    border = icon = pin = shape = None
-    for _attrs, _tags, layout in layers:
-        if layout is None:
-            continue
-        for bg in layout.backgrounds:
-            bg_by_type[bg.type] = bg  # same type replaces; new type appends (order kept)
-        if layout.border is not None:
-            border = layout.border
-        if layout.icon is not None:
-            icon = layout.icon
-        if layout.pin is not None:
-            pin = layout.pin
-        if layout.shape is not None:
-            shape = layout.shape
-    return Layout(
-        backgrounds=list(bg_by_type.values()), border=border, icon=icon, pin=pin, shape=shape
-    )
+    def connections(self) -> list[Connection]:
+        return [Connection.from_raw(c) for c in (self.attributes.get("connections") or [])]
 
 
 class Resolver:
-    """Computes effective values for every entity in a :class:`Database`."""
+    """Computes effective values for every element in a :class:`Database`."""
 
     def __init__(self, db: Database) -> None:
         self._db = db
-        self._topic_cache: dict[str, Resolved] = {}
+        self._parents_cache: dict[str, list[str]] = {}
+
+    # ------------------------------------------------------------------
+    # Linearization
+    # ------------------------------------------------------------------
+
+    def parents(self, element_id: str) -> list[str]:
+        """Ordered, de-duplicated ancestors of *element_id* (excludes itself)."""
+        if element_id in self._parents_cache:
+            return self._parents_cache[element_id]
+
+        result: list[str] = []
+        visited: set[str] = {element_id}
+
+        def dfs(current_id: str) -> None:
+            element = self._db.elements.get(current_id)
+            if element is None:
+                return
+            for parent_id in element.direct_parents:
+                if parent_id in visited:
+                    continue
+                visited.add(parent_id)
+                if parent_id in self._db.elements:
+                    result.append(parent_id)
+                    dfs(parent_id)
+
+        dfs(element_id)
+
+        # AllTopic is the implicit last parent of every element (defaults).
+        if element_id != ALL_TOPIC_ID and ALL_TOPIC_ID not in visited:
+            if ALL_TOPIC_ID in self._db.elements:
+                result.append(ALL_TOPIC_ID)
+
+        self._parents_cache[element_id] = result
+        return result
+
+    def main_parent(self, element_id: str) -> str | None:
+        parents = self.parents(element_id)
+        return parents[0] if parents else None
+
+    def topic_of(self, element_id: str) -> str | None:
+        for parent_id in self.parents(element_id):
+            parent = self._db.elements.get(parent_id)
+            if parent is not None and parent.type is ElementType.TOPIC:
+                return parent_id
+        return None
+
+    # ------------------------------------------------------------------
+    # Value resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_attributes(self, element: Element) -> dict[str, Any]:
+        merged: dict[str, Any] = dict(element.attributes)  # own values win
+        for parent_id in self.parents(element.id):
+            parent = self._db.elements.get(parent_id)
+            if parent is None:
+                continue
+            for key, value in parent.attributes.items():
+                if key in merged or not self._inheritable_into(key, element.type):
+                    continue
+                merged[key] = value
+        return merged
+
+    def _inheritable_into(self, key: str, into_type: ElementType) -> bool:
+        """Whether attribute *key* may be inherited into an element of *into_type*.
+
+        Non-inheriting attributes (e.g. ``connections``) never flow. Otherwise a
+        definition's ``applies_to`` scopes inheritance, so schedule-only config
+        never leaks into a generated event/task.
+        """
+        if key in NON_INHERITING:
+            return False
+        definition = self._db.attribute_defs.get(key)
+        if definition is None:
+            return True  # open attribute, no schema — allow
+        return definition.inherits and definition.applies_to_type(into_type)
+
+    def _attribute_layout(self, attributes: dict[str, Any]) -> Layout | None:
+        """Merge the layouts of every present attribute-definition (first wins per field)."""
+        layout: Layout | None = None
+        for name in attributes:  # element attribute order
+            definition = self._db.attribute_defs.get(name)
+            if definition is None or definition.layout is None:
+                continue
+            layout = definition.layout if layout is None else layout.merged_over(definition.layout)
+        return layout
+
+    def _resolve_layout(self, element: Element, attributes: dict[str, Any]) -> Layout:
+        # own > attribute-layout > parents (in order)
+        layout = element.layout or Layout()
+        attribute_layout = self._attribute_layout(attributes)
+        if attribute_layout is not None:
+            layout = layout.merged_over(attribute_layout)
+        for parent_id in self.parents(element.id):
+            parent = self._db.elements.get(parent_id)
+            if parent is not None and parent.layout is not None:
+                layout = layout.merged_over(parent.layout)
+        return layout
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def resolve_topic(self, topic_id: str) -> Resolved | None:
-        topic = self._db.topics.get(topic_id)
-        if topic is None:
-            return None
-        return self._fold(topic, self._topic_layers(topic_id, frozenset()))
-
-    def resolve_event(self, event_id: str) -> Resolved | None:
-        event = self._db.events.get(event_id)
-        if event is None:
-            return None
-        resolved = self._fold(event, self._event_layers(event, frozenset()))
-        resolved.topic_ids = self._effective_event_topics(event, frozenset())
-        return resolved
-
-    def resolve_task(self, task_id: str) -> Resolved | None:
-        task = self._db.tasks.get(task_id)
-        if task is None:
-            return None
-        resolved = self._fold(task, self._task_layers(task, frozenset()))
-        resolved.topic_ids = self._effective_task_topics(task, frozenset())
-        return resolved
-
-    def _effective_task_topics(self, task: Task, visited: frozenset[str]) -> list[str]:
-        if task.topic_ids:
-            return list(task.topic_ids)
-        parent_id = task.parent_id
-        if parent_id and parent_id in self._db.tasks and parent_id not in visited:
-            return self._effective_task_topics(self._db.tasks[parent_id], visited | {task.id})
-        return []
-
-    def _effective_event_topics(self, event: Event, visited: frozenset[str]) -> list[str]:
-        if event.topic_ids:
-            return list(event.topic_ids)
-        parent_id = event.parent_id
-        if parent_id and parent_id in self._db.events and parent_id not in visited:
-            return self._effective_event_topics(self._db.events[parent_id], visited | {event.id})
-        return []
-
-    def resolve_all_topics(self) -> dict[str, Resolved]:
-        return {tid: r for tid in self._db.topics if (r := self.resolve_topic(tid)) is not None}
-
-    def resolve_all_events(self) -> dict[str, Resolved]:
-        return {eid: r for eid in self._db.events if (r := self.resolve_event(eid)) is not None}
-
-    def resolve_all_tasks(self) -> dict[str, Resolved]:
-        return {tid: r for tid in self._db.tasks if (r := self.resolve_task(tid)) is not None}
-
-    # ------------------------------------------------------------------
-    # Layer builders (all EXCLUDE the default layer; it is added once by _fold)
-    # ------------------------------------------------------------------
-
-    def _trait_layers(self, names: list[str]) -> list[_Layer]:
-        layers: list[_Layer] = []
-        for name in names:
-            trait = self._db.traits.get(name)
-            if trait is not None:
-                layers.append((trait.attributes, [], trait.layout))
-        return layers
-
-    def _topic_layers(self, topic_id: str, visited: frozenset[str]) -> list[_Layer]:
-        if topic_id in visited:
-            return []
-        topic = self._db.topics.get(topic_id)
-        if topic is None:
-            return []
-        visited = visited | {topic_id}
-        layers: list[_Layer] = []
-        for parent_id in topic.parent_ids:  # ancestors first, in listed order
-            layers.extend(self._topic_layers(parent_id, visited))
-        layers.extend(self._trait_layers(topic.traits))
-        layers.append((topic.attributes, topic.tags, topic.layout))
-        return layers
-
-    def _topics_layers(self, topic_ids: list[str]) -> list[_Layer]:
-        layers: list[_Layer] = []
-        for topic_id in topic_ids:  # listed order; later topics win
-            layers.extend(self._topic_layers(topic_id, frozenset()))
-        return layers
-
-    def _event_layers(self, event: Event, visited: frozenset[str]) -> list[_Layer]:
-        if event.id in visited:
-            return []
-        visited = visited | {event.id}
-        layers = self._topics_layers(event.topic_ids)
-        layers.extend(self._trait_layers(event.traits))
-        if event.parent_id and event.parent_id in self._db.events:
-            layers.extend(self._event_layers(self._db.events[event.parent_id], visited))
-        layers.append((event.attributes, event.tags, event.layout))
-        return layers
-
-    def _task_layers(self, task: Task, visited: frozenset[str]) -> list[_Layer]:
-        if task.id in visited:
-            return []
-        visited = visited | {task.id}
-        layers = self._topics_layers(task.topic_ids)
-        layers.extend(self._trait_layers(task.traits))
-        if task.parent_id and task.parent_id in self._db.tasks:
-            parent = self._db.tasks[task.parent_id]
-            # A subtask with no topics of its own inherits the parent's topics.
-            layers.extend(self._task_layers(parent, visited))
-        layers.append((task.attributes, task.tags, task.layout))
-        return layers
-
-    # ------------------------------------------------------------------
-    # Fold
-    # ------------------------------------------------------------------
-
-    def _fold(self, source: Topic | Event | Task, layers: list[_Layer]) -> Resolved:
-        default_layer: _Layer = (self._db.default_attributes, [], self._db.default_layout)
-        all_layers = [default_layer, *layers]
-        return Resolved(
-            source=source,
-            attributes=_merge_attributes(all_layers),
-            tags=_union_tags(all_layers),
-            layout=_merge_layouts(all_layers),
+    def resolve(self, element: Element) -> ResolvedElement:
+        attributes = self._resolve_attributes(element)
+        return ResolvedElement(
+            id=element.id,
+            type=element.type,
+            attributes=attributes,
+            layout=self._resolve_layout(element, attributes),
+            parents=self.parents(element.id),
+            main_parent=self.main_parent(element.id),
+            topic=self.topic_of(element.id),
+            virtual=element.virtual,
         )
+
+    def resolve_id(self, element_id: str) -> ResolvedElement | None:
+        element = self._db.elements.get(element_id)
+        return None if element is None else self.resolve(element)
+
+    def resolve_all(self) -> dict[str, ResolvedElement]:
+        return {eid: self.resolve(e) for eid, e in self._db.elements.items()}

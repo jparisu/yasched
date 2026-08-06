@@ -1,44 +1,33 @@
-"""Core domain data holders: entities and value objects.
+"""Core domain data holders for the unified v4 element model.
 
-These are plain, frozen dataclasses parsed from the configuration. They do not
-resolve references, apply inheritance, or compute schedules — that is
+Plain data holders parsed from the configuration. They do not resolve
+references, apply inheritance, or generate auto-elements — that is
 ``backending``'s job. ``coring`` imports ``utilizing`` only.
 """
 
-from yasched.coring._shared import EventLink, RelationType, TaskRelation, Weekday
-from yasched.coring.Event import Event
-from yasched.coring.Layout import Background, Border, Icon, Layout, Pin, Shape
-from yasched.coring.Schedule import (
-    MonthlySchedule,
-    MultiDaySchedule,
-    Schedule,
-    SingleDaySchedule,
-    WeeklySchedule,
-    YearlySchedule,
+from yasched.coring.AttributeDefinition import (
+    NON_INHERITING,
+    AttributeDefinition,
+    ValueType,
+    builtin_definitions,
 )
-from yasched.coring.Task import Task
-from yasched.coring.Topic import Topic
-from yasched.coring.Trait import Trait
+from yasched.coring.Connection import Connection
+from yasched.coring.Element import Element
+from yasched.coring.ElementType import ElementType
+from yasched.coring.Layout import Background, Border, Format, Icon, Layout, Pin
 
 __all__ = [
-    "Weekday",
-    "RelationType",
-    "TaskRelation",
-    "EventLink",
+    "ElementType",
+    "Element",
+    "Connection",
+    "AttributeDefinition",
+    "ValueType",
+    "builtin_definitions",
+    "NON_INHERITING",
+    "Layout",
     "Background",
     "Border",
     "Icon",
     "Pin",
-    "Shape",
-    "Layout",
-    "Trait",
-    "Schedule",
-    "WeeklySchedule",
-    "MonthlySchedule",
-    "YearlySchedule",
-    "SingleDaySchedule",
-    "MultiDaySchedule",
-    "Topic",
-    "Event",
-    "Task",
+    "Format",
 ]

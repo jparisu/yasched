@@ -48,41 +48,46 @@ def find_personal_template() -> Path | None:
 # Fallback used by `yasched init` if the repo template cannot be located
 # (e.g. installed as a wheel without the resources tree).
 FALLBACK_TEMPLATE = """\
-# Your personal yasched agenda. Edit freely, then run `yasched serve`.
-# Full model reference: resources/teacher_example/ in the yasched repo.
+# Your personal yasched agenda (v4). Edit freely, then run `yasched serve`.
+# Everything is an Element; `directParents` drives inheritance (first = MainParent).
+# Full model reference: resources/example_v4/ in the yasched repo.
 
-default:
-  attributes: { priority: 3, status: todo }
-  layout:
-    shape: { type: rounded, radius: 6px }
+elements:
+  # AllTopic is the built-in root; customize it to set app-wide defaults.
+  - id: AllTopic
+    type: topic
+    attributes: { name: All }
+    layout: { shape: rounded_rectangle }
 
-traits:
-  urgent:
-    attributes: { priority: 5 }
-    layout: { pin: { color: red, icon: "🔥" } }
-
-topics:
   - id: work
-    name: Work
-    tags: [work]
-    layout: { background: { type: solid, color: "#3b82f6" } }
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Work }
+    layout: { background: { color: "#3b82f6" } }
+
   - id: personal
-    name: Personal
-    tags: [personal]
-    layout: { background: { type: solid, color: "#10b981" } }
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Personal }
+    layout: { background: { color: "#10b981" } }
 
-events:
   - id: standup
-    name: Daily standup
-    topic_ids: [work]
-    schedules:
-      - { type: weekly, week_days: [monday, tuesday, wednesday, thursday, friday],
-          start_time: "09:00", duration: 15m }
+    type: schedule
+    directParents: [work]
+    attributes:
+      name: Daily standup
+      generates: event
+      kind: weekly
+      weekDays: [mon, tue, wed, thu, fri]
+      time: "09:00"
+      duration: 15m
 
-tasks:
   - id: welcome
-    name: "Welcome to yasched — edit ~/.yasched/agenda.yaml"
-    topic_ids: [personal]
-    traits: [urgent]
-    attributes: { deadline: today }
+    type: task
+    directParents: [personal]
+    attributes:
+      name: "Welcome to yasched — edit ~/.yasched/agenda.yaml"
+      status: not-started
+      priority: 5
+      deadline: today
 """

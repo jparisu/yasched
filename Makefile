@@ -1,5 +1,6 @@
 .PHONY: venv install install-current ensure-git precommit lint format test docs build clean \
-        test-all run serve demo web-build web install-web up up-demo down logs
+        test-all run serve demo web-build web install-web up up-demo down logs \
+        check-tools require-node install-node install-all
 
 VENV ?= .venv
 PYTHON ?= python3
@@ -17,11 +18,13 @@ VENV_BUILD := $(VENV)/bin/python -m build
 VENV_YASCHED := $(VENV)/bin/yasched
 
 WEB_DIR := apps/web
+NODE_VERSION ?= 20
+NVM_DIR ?= $(HOME)/.nvm
 
 # Agenda served by `make serve` (defaults to the personal agenda).
 AGENDA ?= $(HOME)/.yasched/agenda.yaml
 # Agenda served by `make demo` (the bundled comprehensive example).
-DEMO_AGENDA := resources/teacher_example/teacher_main.yaml
+DEMO_AGENDA := resources/example_v4/agenda.yaml
 HOST ?= 127.0.0.1
 PORT ?= 8000
 
@@ -35,6 +38,47 @@ install: venv
 install-current:
 	python -m pip install --upgrade pip
 	python -m pip install -e ".[dev]"
+
+# ---------------------------------------------------------------------------
+# One-shot install of EVERYTHING for local (non-Docker) use.
+#   make install-all   -> Python deps (venv) + web deps + build the SPA.
+# Node.js (>= $(NODE_VERSION)) is a system prerequisite pip cannot provide; if it is
+# missing, `require-node` stops with instructions (incl. `make install-node`).
+# The zero-prerequisite alternative is Docker: `make up` (needs only Docker).
+# ---------------------------------------------------------------------------
+install-all: require-node install web-build
+	@echo ""
+	@echo "✔ Installed. Try:  make demo   (bundled example)   or   make run"
+
+# Report which required tools are present, with versions.
+check-tools:
+	@echo "Required tools:"
+	@command -v $(PYTHON) >/dev/null 2>&1 && echo "  python3 : $$($(PYTHON) --version 2>&1)  (need >= 3.12)" || echo "  python3 : MISSING (need >= 3.12)"
+	@command -v node      >/dev/null 2>&1 && echo "  node    : $$(node --version)  (need >= $(NODE_VERSION))"      || echo "  node    : MISSING (need >= $(NODE_VERSION) — run 'make install-node')"
+	@command -v npm       >/dev/null 2>&1 && echo "  npm     : $$(npm --version)"                    || echo "  npm     : MISSING"
+	@command -v docker    >/dev/null 2>&1 && echo "  docker  : present (optional — enables 'make up')" || echo "  docker  : not found (optional)"
+
+# Stop with clear guidance if Node/npm are absent.
+require-node:
+	@command -v npm >/dev/null 2>&1 || { \
+	  echo "ERROR: Node.js (>= $(NODE_VERSION)) and npm are required to build the frontend."; \
+	  echo "Pick one:"; \
+	  echo "  • make install-node             # install Node $(NODE_VERSION) for your user, via nvm (needs network once)"; \
+	  echo "  • Debian/Ubuntu: sudo apt-get install -y nodejs npm"; \
+	  echo "  • macOS (Homebrew): brew install node"; \
+	  echo "  • Windows / no-fuss: use Docker instead ->  make up"; \
+	  exit 1; }
+
+# Optional: install Node via nvm (per-user, no sudo). Needs network once.
+# After this, open a NEW shell (nvm adds itself to your shell profile) or run
+# 'source $(NVM_DIR)/nvm.sh', then 'make install-all'.
+install-node:
+	@if [ ! -s "$(NVM_DIR)/nvm.sh" ]; then \
+	  echo "Installing nvm into $(NVM_DIR) ..."; \
+	  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash; \
+	fi
+	@bash -c '. "$(NVM_DIR)/nvm.sh" && nvm install $(NODE_VERSION) && nvm alias default $(NODE_VERSION) && echo "Node $$(node --version) ready."'
+	@echo "Now run:  source $(NVM_DIR)/nvm.sh   (or open a new terminal), then  make install-all"
 
 ensure-git:
 	@if [ ! -d .git ]; then git init -q; fi
@@ -91,7 +135,7 @@ up:
 
 # Same, but serve the bundled comprehensive example (browse-only).
 up-demo:
-	YASCHED_AGENDA=/app/resources/teacher_example/teacher_main.yaml $(DOCKER_COMPOSE) up -d --build
+	YASCHED_AGENDA=/app/resources/example_v4/agenda.yaml $(DOCKER_COMPOSE) up -d --build
 	@echo "yasched (demo) at http://localhost:$(PORT)  —  stop it with 'make down'"
 
 # Stop and remove the container + network.
@@ -106,7 +150,7 @@ logs:
 # Web frontend (React + Vite)
 # ---------------------------------------------------------------------------
 
-install-web:
+install-web: require-node
 	cd $(WEB_DIR) && npm install
 
 # Production build of the SPA (served by the API).

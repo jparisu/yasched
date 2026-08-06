@@ -1,5 +1,5 @@
-"""Inheritance/trait/merge resolution."""
+"""Inheritance resolution for the v4 element model."""
 
-from yasched.backending.resolving.Resolver import Resolved, Resolver
+from yasched.backending.resolving.Resolver import ResolvedElement, Resolver
 
-__all__ = ["Resolver", "Resolved"]
+__all__ = ["Resolver", "ResolvedElement"]

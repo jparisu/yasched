@@ -1,107 +1,71 @@
-"""Tests for DatabaseLoader parsing (including xyml includes)."""
+"""Tests for the v4 (x)yml loader."""
 
 import pytest
 
-from yasched.backending.loading.DatabaseLoader import DatabaseLoader, DatabaseLoadError
-from yasched.coring._shared import RelationType
-from yasched.coring.Schedule import (
-    MonthlySchedule,
-    MultiDaySchedule,
-    SingleDaySchedule,
-    WeeklySchedule,
-    YearlySchedule,
-)
+from yasched.backending.Database import ALL_TOPIC_ID
+from yasched.backending.loading.ElementLoader import DatabaseLoadError, ElementLoader
+from yasched.coring.ElementType import ElementType
 
 
-def test_loads_teacher_example(teacher_db):
-    assert len(teacher_db.topics) == 7
-    assert len(teacher_db.events) == 10
-    assert len(teacher_db.tasks) == 10
-    assert len(teacher_db.traits) == 7
+def test_from_dict_parses_elements_and_definitions():
+    doc = {
+        "attributes": {"effort": {"type": "number", "applies_to": ["task"], "min": 0, "max": 40}},
+        "elements": [
+            {"id": "AllTopic", "type": "topic"},
+            {
+                "id": "t",
+                "type": "task",
+                "directParents": ["AllTopic"],
+                "attributes": {"name": "T", "effort": 3},
+            },
+        ],
+    }
+    db = ElementLoader.from_dict(doc)
+    assert db.element("t").type is ElementType.TASK
+    assert db.attribute_defs["effort"].maximum == 40
+    assert not db.attribute_defs["effort"].builtin
 
 
-def test_default_layer_parsed(teacher_db):
-    assert teacher_db.default_attributes["priority"] == 1
-    assert teacher_db.default_layout is not None
-    assert teacher_db.default_layout.shape.type == "rounded"
+def test_alltopic_created_when_missing():
+    db = ElementLoader.from_dict({"elements": []})
+    assert ALL_TOPIC_ID in db.elements
+    assert db.element(ALL_TOPIC_ID).type is ElementType.TOPIC
 
 
-def test_trait_shapes(teacher_db):
-    assert teacher_db.traits["easy"].attributes == {"difficulty": "easy"}
-    assert teacher_db.traits["easy"].layout is None  # attributes-only
-    assert teacher_db.traits["exam-style"].attributes == {}  # layout-only
-    assert teacher_db.traits["exam-style"].layout is not None
-    assert teacher_db.traits["hard"].layout is not None  # both
-
-
-def test_all_schedule_types_present(teacher_db):
-    kinds = {type(s) for e in teacher_db.events.values() for s in e.schedules}
-    assert WeeklySchedule in kinds
-    assert MonthlySchedule in kinds
-    assert YearlySchedule in kinds
-    assert SingleDaySchedule in kinds
-    assert MultiDaySchedule in kinds
-
-
-def test_weekly_schedule_parsed(teacher_db):
-    lecture = teacher_db.events["math101-lecture"]
-    sched = lecture.schedules[0]
-    assert isinstance(sched, WeeklySchedule)
-    assert len(sched.week_days) == 2
-    assert sched.start_time.to_hhmm() == "10:00"
-    assert sched.duration.to_minutes() == 60
-
-
-def test_ext_directive_merged_subevent(teacher_db):
-    cancel = teacher_db.events["math101-lecture-cancel"]
-    assert cancel.parent_id == "math101-lecture"
-    assert cancel.attributes["status"] == "cancelled"  # from template
-    assert "cancelled" in cancel.tags  # from template
-    assert cancel.layout.icon.value == "❌"  # from template
-
-
-def test_relation_types_and_shorthand(teacher_db):
-    grade = teacher_db.tasks["grade-midterm"]
-    by_target = {r.task_id: r.type for r in grade.relations}
-    assert by_target["make-slides"] is RelationType.NEEDS
-    assert by_target["prepare-exercises"] is RelationType.REQUIRES
-
-    renew = teacher_db.tasks["renew-contract"]
-    assert renew.relations[0].task_id == "submit-grades"
-    assert renew.relations[0].type is RelationType.CONNECTED  # shorthand default
-
-
-def test_event_links_parsed(teacher_db):
-    grade = teacher_db.tasks["grade-midterm"]
-    link = grade.event_links[0]
-    assert link.event_id == "midterm-exam"
-    assert link.use_as_deadline is True
-    assert link.as_context is True
-
-
-def test_multi_topic_task(teacher_db):
-    assert teacher_db.tasks["submit-grades"].topic_ids == ["math-101", "admin"]
-
-
-def test_single_topic_string_coerced_to_list():
-    db = DatabaseLoader.loads(
-        "tasks:\n  - id: t\n    name: T\n    topic_ids: solo\n",
+def test_accepts_snake_and_camel_parents_and_toplevel_name():
+    a = ElementLoader.parse_element(
+        {"id": "a", "type": "task", "direct_parents": ["x"], "name": "A"}
     )
-    assert db.tasks["t"].topic_ids == ["solo"]
+    b = ElementLoader.parse_element({"id": "b", "type": "task", "directParents": ["x"]})
+    assert a.direct_parents == ["x"] == b.direct_parents
+    assert a.attributes["name"] == "A"  # top-level name folded into attributes
 
 
-def test_missing_id_raises():
+def test_missing_id_or_type_raises():
     with pytest.raises(DatabaseLoadError):
-        DatabaseLoader.loads("tasks:\n  - name: no id\n")
-
-
-def test_unknown_schedule_type_raises():
+        ElementLoader.parse_element({"type": "task"})
     with pytest.raises(DatabaseLoadError):
-        DatabaseLoader.loads(
-            "events:\n  - id: e\n    name: E\n    schedules:\n      - type: fortnightly\n"
-        )
+        ElementLoader.parse_element({"id": "x"})
 
 
-def test_empty_document_is_empty_database():
-    db = DatabaseLoader.loads("")
-    assert not db.topics and not db.events and not db.tasks
+def test_layout_parsing_full():
+    raw = {
+        "background": {"color": "#112233", "gradient_color": "#445566"},
+        "border": {"color": "red", "width": "2px", "style": "dashed"},
+        "icon": {"type": "emoji", "value": "📐"},
+        "pin": {"color": "#00ff00"},
+        "shape": "diamond",
+        "animation": "beep",
+        "hover_animation": "pulse",
+        "format": {"font": "serif", "text_align": "center"},
+    }
+    layout = ElementLoader.parse_layout(raw)
+    assert layout.background.gradient_color.to_hex() == "#445566"
+    assert layout.border.style == "dashed"
+    assert layout.shape == "diamond"
+    assert layout.format.text_align == "center"
+
+
+def test_multi_file_flag_detected():
+    db = ElementLoader.loads("elements:\n  - id: x\n    type: task\n")
+    assert db.multi_file is False

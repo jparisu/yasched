@@ -1,102 +1,181 @@
 @startuml yasched-data
 ' ===================================================================
-' yasched — PROPOSED data model (v4 study)
+' yasched — v4 data model (ground truth)
+' Mirrors devs/v4/v4-panel-requirements.md
 ' ===================================================================
 
-' Generic element model for all items in the system that will be represented in the UI
+' -------------------------------------------------------------------
+' The universal Element
+' -------------------------------------------------------------------
+' Everything the app manages is an Element. `type` discriminates
+' behavior and which attributes are valid; there is a single data
+' structure. Only `id` is a non-attribute identity field.
 protocol Element {
-    ' Generic properties of all elements
-    +id : string
-    +name : string
-    +description : string '?
+    ' --- structural fields (NOT attributes) ---
+    +id : string                  ' unique, immutable, never inherited
+    +type : ElementType           ' topic | event | task | schedule
     --
-    ' Logic properties
-    +topic : Topic  ' mandatory
-    +labels : List<Topic>
+    ' Inheritance relation ONLY. Ordered "tag list":
+    ' [0] is the intended MainParent, the rest are tags.
+    +directParents : List<id>
     --
-    ' Format properties
+    ' Visual style (resolved by its own rule, see Layout note)
     +layout : Layout
     --
-    ' Open bags
+    ' Open, typed name->value bag. Holds ALL semantic values:
+    ' name, description, focus, connections, cancelled, dates,
+    ' status, priority, difficulty, location, reminders, ...
     +attributes : Map<string, Any>
-        ' e.g. status, priority, difficulty, effort, kanban, on-focus, location...
+    ==
+    ' --- derived (not stored) ---
+    ' Parents      : pre-order DFS over directParents, deduped (global visited)
+    ' MainParent   : Parents[0] == directParents[0]
+    ' Topic        : first `topic`-typed element in Parents
 }
 
+enum ElementType {
+    topic
+    event
+    task
+    schedule
+}
+
+' ===================================================================
+' Attribute definitions (the schema) — stored in the database
+' ===================================================================
+package "attributing" {
+
+    class AttributeDefinition {
+        +name : string
+        +valueType : ValueType
+        +appliesTo : ElementType[]   ' scopes inheritance to compatible types
+        +constraints : Constraints   ' min/max, enum values, ...
+        +layout : Layout '?          ' static layout applied when present (v4)
+                                     ' conditional rules deferred to a later version
+    }
+
+    enum ValueType {
+        string
+        number
+        int
+        bool
+        date
+        time
+        datetime
+        duration
+        enum
+        color
+        id_ref
+        list
+    }
+
+    ' A relation to another element. Stored ONCE on the source;
+    ' surfaced on both endpoints in the UI. Informational only (v4).
+    ' Lives inside the built-in `connections` attribute (List<Connection>).
+    class Connection {
+        +to : id            ' target element
+        +relation : string  ' open label, directional: source --relation--> to
+    }
+}
+
+' ===================================================================
+' Topics
+' ===================================================================
 package "topicing" {
 
     class Topic {
     }
     Topic --|> Element
 
-    ' main topic that is parent and root of any other topic
-    entity Main extends Topic {
-        -topic: None
+    ' Built-in root topic. Ancestor of every element (always last in
+    ' Parents). Carries app-wide default attributes + default layout,
+    ' so there is no separate `default` layer. Has no parents itself.
+    entity AllTopic extends Topic {
     }
-
 }
 
+' ===================================================================
+' Eventing
+' ===================================================================
 package "eventing" {
 
-    package "scheduling" {
-
-        abstract class Schedule {
-            +startDate : Date
-            +endDate : Date
-        }
-        Schedule --|> Element
-
-        class WeeklySchedule extends Schedule {
-            +weekDays : Weekday[]
-        }
-
-        class MonthlySchedule extends Schedule {
-            +monthDays : int[]
-            ' 1..31 (clamped to month end)
-        }
-
-        class YearlySchedule extends Schedule {
-            +yearlyDays : YearlyDay[]
-        }
-
-    }
-
-    ' This class represents every event element that will be represented in an agenda
+    ' A time-bound occurrence. Timing via start/end/duration attributes.
+    ' `class` = normal | reminder | deadline (auto-generated set the last two).
     class Event {
-        +date: Date
+        ' attribute-backed: start, end?, duration?, location?, reminders?, class
     }
     Event --|> Element
-    Schedule --> Event: "produces"
-
-    ' An event with a duration
-    class LastingEvent {
-        +duration: Time
-    }
-    LastingEvent --|> Event
-
 }
 
+' ===================================================================
+' Scheduling — recurrence generators (the ONLY way to recur)
+' ===================================================================
+package "scheduling" {
 
+    ' A Schedule generates events OR tasks over [startDate, endDate].
+    ' The Schedule IS the template: each generated element pins the
+    ' Schedule as MainParent and inherits its name/desc/attrs/layout.
+    abstract class Schedule {
+        +generates : ElementType   ' event | task
+        +startDate : Date
+        +endDate : Date            ' may be open-ended
+        +time : Time '?            ' time-of-day for generated events; absent => all-day
+        +duration : Duration '?
+    }
+    Schedule --|> Element
+
+    class DailySchedule extends Schedule {
+    }
+    class WeeklySchedule extends Schedule {
+        +weekDays : Weekday[]
+    }
+    class MonthlySchedule extends Schedule {
+        +monthDays : int[]         ' 1..31 (clamped to month end)
+    }
+    class YearlySchedule extends Schedule {
+        +yearlyDays : YearlyDay[]  ' {month, day}
+    }
+}
+
+' ===================================================================
+' Tasking
+' ===================================================================
 package "tasking" {
 
+    ' attribute-backed: status, priority, difficulty, deadline?,
+    ' reminders?, marked, location?. A sub-task has a task MainParent.
     class Task {
-
     }
     Task --|> Element
-
 }
 
+' ===================================================================
+' Auto-elements (virtual by default; promoted to real on edit)
+' ===================================================================
+' Not stored until promoted. MainParent forced to the generator.
+' Deterministic ids:  "{schedule-id}#{date}", "{task-id}#deadline",
+'                     "{host-id}#reminder-{offset}".
+' Cascade bound: Schedule -> task -> {deadline, reminder} events (no deeper).
+Schedule ..> Element : "generates (event|task)"
+Task     ..> Event   : "deadline -> deadline event"
+Event    ..> Event   : "reminders -> reminder events"
+Task     ..> Event   : "reminders -> reminder events"
+
+' ===================================================================
+' Visualizing (layout)
+' ===================================================================
 package "visualizing" {
 
-    class Border {
-        + color : Color
-        + width : number
-        + style : BorderStyle
+    class Background {
+        +color : Color
+        ' second color present => gradient
+        +gradientColor : Color '?
     }
 
-    class Background {
-        + color : Color
-        ' If there is a second color, a gradient is used
-        + gradient_color: Color
+    class Border {
+        +color : Color
+        +width : number
+        +style : BorderStyle
     }
 
     enum BorderStyle {
@@ -116,20 +195,24 @@ package "visualizing" {
         none
         beep
         rumble
-        ' ?
     }
 
     enum HoverAnimation {
         none
         highlight
         pulse
-        ' ?
     }
 
     class Pin {
         +color : Color
     }
 
+    class Icon {
+        +type : string   ' emoji | name
+        +value : string
+    }
+
+    ' Applied by default this version.
     class Format {
         +font : Font
         +fontSize : number
@@ -137,28 +220,33 @@ package "visualizing" {
         +textAlign : TextAlign
     }
 
-    ' Visual information for an element compose by smaller visual elements
+    ' Each field optional; unset fields resolve per the hierarchy below.
     class Layout {
         +background : Background
         +border : Border
         +icon : Icon
-        +pin : Color
+        +pin : Pin
         +shape : Shape
         +animation : Animation
         +hoverAnimation : HoverAnimation
-        +pin : Pin
-        ' This will be by default for now, but in the future it may be a new feature
-        +format: Format
+        +format : Format
     }
 
     Layout *--> Background : has
     Layout *--> Border : has
     Layout *--> Icon : has
-    Layout *--> Shape : has
-    Layout *--> Animation : has
-    Layout *--> HoverAnimation : has
+    Layout *--> Pin : has
+    Layout *--> Format : has
 
-    ' There exist a layout precedence hierarchy: default < label < topic < attributes < parent < own
+    ' Layout resolution per field, first defined wins (own always wins):
+    '   element's own  >  attribute-layout  >  Parents (in Parents order)
+    ' MainParent (Parents[0]) and Topic (first topic in Parents) are
+    ' covered by their natural position in Parents — no special step.
     Element *--> Layout : has
 
+    ' Attribute (non-layout) resolution:
+    '   own  >  first parent in Parents that defines it (type-scoped).
+    ' Non-inheriting attributes: connections.
 }
+
+@enduml

@@ -1,77 +1,81 @@
 # =============================================================================
-# Your personal yasched agenda.
+# Your personal yasched agenda (v4).
 #
 # `yasched init` copies this file to ~/.yasched/agenda.yaml. Edit it freely,
 # then run `yasched serve` to view it locally in your browser.
 #
-# This is a small, friendly starting point. For the full set of features
-# (traits, DAG topics, all schedule types, sub-events, relations, event links),
-# see resources/teacher_example/ and its FEATURES.md in the yasched repo.
+# Everything is an Element with a `type` (topic | event | task | schedule).
+# `directParents` is an ordered inheritance list: the first entry is the
+# element's MainParent, the rest are extra tags. The first topic reachable
+# through the parents becomes the element's Topic (used for grouping). The
+# built-in `AllTopic` is the root and holds app-wide defaults.
+#
+# Full feature tour: resources/example_v4/ in the yasched repo.
 # =============================================================================
 
-default:
-  attributes:
-    priority: 3
-    status: todo
-  layout:
-    shape: { type: rounded, radius: 6px }
-    background: { type: solid, color: "#f4f4f5" }
-
-traits:
-  urgent:
-    attributes: { priority: 5 }
+elements:
+  - id: AllTopic
+    type: topic
+    attributes: { name: All, priority: 3 }
     layout:
-      pin: { color: red, icon: "🔥" }
-  focus:
-    attributes: { kanban: on-focus }
+      shape: rounded_rectangle
+      background: { color: "#f4f4f5" }
 
-topics:
   - id: work
-    name: Work
-    tags: [work]
-    layout:
-      background: { type: solid, color: "#3b82f6" }
-  - id: personal
-    name: Personal
-    tags: [personal]
-    layout:
-      background: { type: solid, color: "#10b981" }
-  - id: health
-    name: Health
-    tags: [personal]
-    layout:
-      background: { type: solid, color: "#f43f5e" }
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Work }
+    layout: { background: { color: "#3b82f6" } }
 
-events:
+  - id: personal
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Personal }
+    layout: { background: { color: "#10b981" } }
+
+  - id: health
+    type: topic
+    directParents: [AllTopic]
+    attributes: { name: Health }
+    layout: { background: { color: "#f43f5e" } }
+
+  # Recurring event — a Schedule element is the template for what it generates.
   - id: standup
-    name: Daily standup
-    topic_ids: [work]
-    schedules:
-      - type: weekly
-        week_days: [monday, tuesday, wednesday, thursday, friday]
-        start_time: "09:00"
-        duration: 15m
+    type: schedule
+    directParents: [work]
+    attributes:
+      name: Daily standup
+      generates: event
+      kind: weekly
+      weekDays: [mon, tue, wed, thu, fri]
+      time: "09:00"
+      duration: 15m
 
   - id: gym
-    name: Gym
-    topic_ids: [health]
-    schedules:
-      - type: weekly
-        week_days: [tuesday, thursday]
-        start_time: "18:00"
-        duration: 1h
-
-tasks:
-  - id: welcome
-    name: "Welcome! Edit ~/.yasched/agenda.yaml to make this yours"
-    topic_ids: [personal]
-    traits: [urgent, focus]
+    type: schedule
+    directParents: [health]
     attributes:
+      name: Gym
+      generates: event
+      kind: weekly
+      weekDays: [tue, thu]
+      time: "18:00"
+      duration: 1h
+
+  - id: welcome
+    type: task
+    directParents: [personal]
+    attributes:
+      name: "Welcome! Edit ~/.yasched/agenda.yaml to make this yours"
+      focus: true
+      status: not-started
+      priority: 5
       deadline: today
 
   - id: plan-week
-    name: "Plan the week"
-    topic_ids: [work]
+    type: task
+    directParents: [work]
     attributes:
-      status: doing
+      name: Plan the week
+      status: in-progress
       priority: 4

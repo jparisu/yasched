@@ -39,17 +39,17 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
-    from yasched.backending.loading.DatabaseLoader import DatabaseLoader
+    from yasched.backending.loading.ElementLoader import ElementLoader
     from yasched.backending.validating.Validator import Severity, validate_database
 
     path = config.resolve_agenda_path(args.agenda)
     if not path.exists():
         print(f"No agenda at {path}.")
         return 1
-    db = DatabaseLoader.load(path)
+    db = ElementLoader.load(path)
     print(
         f"Loaded {path}\n  topics={len(db.topics)} events={len(db.events)} "
-        f"tasks={len(db.tasks)} traits={len(db.traits)}"
+        f"tasks={len(db.tasks)} schedules={len(db.schedules)}"
     )
     issues = validate_database(db)
     errors = [i for i in issues if i.severity is Severity.ERROR]

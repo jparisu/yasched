@@ -1,46 +1,32 @@
-"""
-Pytest configuration for generated-project tests.
-"""
+"""Pytest configuration and shared fixtures for the v4 test suite."""
 
 import sys
 from pathlib import Path
 
 import pytest
 
-# Add src directory to Python path
+# Add src directory to Python path so tests import the package without install.
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
 
 @pytest.fixture
-def sample_data():
-    """Provide sample data for tests."""
-    return {"value": 42, "data": [1, 2, 3, 4, 5]}
+def example_path():
+    """Path to the comprehensive v4 example agenda."""
+    return Path(__file__).parent.parent / "resources" / "example_v4" / "agenda.yaml"
 
 
 @pytest.fixture
-def sample_value():
-    """Provide a sample value for tests."""
-    return 10
+def example_db(example_path):
+    """The v4 example loaded into a Database."""
+    from yasched.backending.loading.ElementLoader import ElementLoader
+
+    return ElementLoader.load(example_path)
 
 
 @pytest.fixture
-def teacher_path():
-    """Path to the comprehensive teacher-example agenda."""
-    return Path(__file__).parent.parent / "resources" / "teacher_example" / "teacher_main.yaml"
-
-
-@pytest.fixture
-def teacher_db(teacher_path):
-    """The teacher example loaded into a Database."""
-    from yasched.backending.loading.DatabaseLoader import DatabaseLoader
-
-    return DatabaseLoader.load(teacher_path)
-
-
-@pytest.fixture
-def teacher_resolver(teacher_db):
-    """A Resolver over the teacher example."""
+def example_resolver(example_db):
+    """A Resolver over the v4 example."""
     from yasched.backending.resolving.Resolver import Resolver
 
-    return Resolver(teacher_db)
+    return Resolver(example_db)

@@ -1,25 +1,26 @@
-"""Loading and resolution: turn a configuration into resolved, schedulable data.
+"""Loading, resolution, and generation for the v4 element model.
 
-``backending`` imports ``coring`` and ``utilizing``. It parses xyml documents
-into a :class:`Database`, resolves inheritance/traits/merges into effective
-values, and expands schedules into concrete occurrences.
+``backending`` imports ``coring`` and ``utilizing``. It parses (x)yml documents
+into a :class:`Database`, resolves the inheritance model into effective values,
+generates auto-elements (schedules/deadlines/reminders), and validates.
 """
 
-from yasched.backending.Database import Database
-from yasched.backending.loading.DatabaseLoader import DatabaseLoader
-from yasched.backending.loading.DatabaseSerializer import DatabaseSerializer
-from yasched.backending.resolving.Resolver import Resolved, Resolver
-from yasched.backending.scheduling.Occurrences import Occurrence, build_event_occurrences
+from yasched.backending.Database import ALL_TOPIC_ID, Database
+from yasched.backending.generating.Generator import Generator
+from yasched.backending.loading.ElementLoader import DatabaseLoadError, ElementLoader
+from yasched.backending.loading.ElementSerializer import ElementSerializer
+from yasched.backending.resolving.Resolver import ResolvedElement, Resolver
 from yasched.backending.validating.Validator import Issue, Severity, Validator, validate_database
 
 __all__ = [
     "Database",
-    "DatabaseLoader",
-    "DatabaseSerializer",
+    "ALL_TOPIC_ID",
+    "ElementLoader",
+    "DatabaseLoadError",
+    "ElementSerializer",
     "Resolver",
-    "Resolved",
-    "Occurrence",
-    "build_event_occurrences",
+    "ResolvedElement",
+    "Generator",
     "Validator",
     "Issue",
     "Severity",

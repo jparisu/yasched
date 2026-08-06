@@ -1,345 +1,222 @@
-"""Map resolved entities + occurrences to the JSON shapes the frontend expects.
+"""Map a resolved :class:`Database` to the JSON shapes the frontend consumes.
 
-The frontend has a fixed, narrow schema (single topic per item, low/medium/high
-priority, todo/doing/done status, a small style object). This module is the
-single place that translates the open v3 model into that schema.
+Pure functions (no FastAPI import) so the view logic is unit-testable on its
+own. Everything the frontend needs is a resolved element plus its generated
+(virtual) occurrences within a date window.
 """
 
 from __future__ import annotations
 
 import datetime
+from dataclasses import replace
 from typing import Any
 
 from yasched.backending.Database import Database
-from yasched.backending.resolving.Resolver import Resolved, Resolver
-from yasched.backending.scheduling.Occurrences import _times, build_event_occurrences
-from yasched.coring.Layout import Layout
-from yasched.coring.Schedule import MonthlySchedule, WeeklySchedule, YearlySchedule
-from yasched.utilizing.coloring.Color import Color
-
-_DEFAULT_COLOR = Color.from_hex("#94a3b8")
-
-# our shape vocabulary -> frontend CardShape
-_SHAPE_MAP = {
-    "rectangle": "rectangle",
-    "rounded": "rounded",
-    "pill": "curvy",
-    "trapezoid": "sticky",
-    "sticky": "sticky",
-    "curvy": "curvy",
-    "cloudy": "cloudy",
-}
+from yasched.backending.generating.Generator import Generator
+from yasched.backending.resolving.Resolver import ResolvedElement, Resolver
+from yasched.coring.AttributeDefinition import AttributeDefinition
+from yasched.coring.ElementType import ElementType
+from yasched.utilizing.timing.Duration import Duration
 
 
-def _primary_color(layout: Layout) -> Color:
-    if layout.backgrounds:
-        return layout.backgrounds[-1].color  # most-specific (highest) layer
-    if layout.pin is not None:
-        return layout.pin.color
-    if layout.border is not None:
-        return layout.border.color
-    return _DEFAULT_COLOR
+def _combined_database(db: Database, virtuals: list[Any]) -> Database:
+    """A shallow database whose element pool also contains the virtual elements."""
+    pool = dict(db.elements)
+    for virtual in virtuals:
+        pool[virtual.id] = virtual
+    return replace(db, elements=pool)
 
 
-def _rgba(color: Color, alpha: float) -> str:
-    return f"rgba({round(color.r * 255)}, {round(color.g * 255)}, {round(color.b * 255)}, {alpha})"
+def _incoming_map(db: Database) -> dict[str, list[dict[str, str]]]:
+    """Reverse connection index: target id -> [{from, relation}]."""
+    incoming: dict[str, list[dict[str, str]]] = {}
+    for element in db.elements.values():
+        for connection in element.connections():
+            incoming.setdefault(connection.to, []).append(
+                {"from": element.id, "relation": connection.relation}
+            )
+    return incoming
 
 
-def _style(layout: Layout) -> dict[str, str]:
-    color = _primary_color(layout)
-    shape = _SHAPE_MAP.get(layout.shape.type, "rounded") if layout.shape else "rounded"
-    return {
-        "backgroundColor": _rgba(color, 0.15),
-        "leftColor": color.to_hex(),
-        "shape": shape,
-    }
-
-
-def _num(value: Any) -> float | int | None:
-    """Coerce a numeric attribute to int/float; None when absent/non-numeric.
-
-    Legacy string buckets (low/medium/high) map to representative numbers so old
-    agendas still sort/bucket sensibly under the new numeric model.
-    """
-    if isinstance(value, bool) or value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return value
-    s = str(value).strip().lower()
-    legacy = {"low": 2, "medium": 5, "high": 8, "easy": 2, "hard": 8}
-    if s in legacy:
-        return legacy[s]
-    try:
-        return int(s)
-    except ValueError:
-        try:
-            return float(s)
-        except ValueError:
-            return None
-
-
-def _truthy(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return value != 0
-    if isinstance(value, str):
-        return value.strip().lower() in ("true", "yes", "on", "1", "y")
-    return False
-
-
-def _status(value: Any) -> str:
-    v = str(value or "todo").lower().replace("_", "-")
-    if v in ("done", "completed", "finished"):
-        return "done"
-    if v in ("doing", "in-progress", "in-process", "wip", "started"):
-        return "doing"
-    return "todo"
-
-
-def _first_topic(resolved: Resolved) -> str:
-    ids = resolved.topic_ids or (getattr(resolved.source, "topic_ids", []) or [])
-    return ids[0] if ids else ""
-
-
-def _topic_color_maps(
-    resolver: Resolver, db: Database
-) -> tuple[dict[str, str], dict[str, str]]:
-    """Return (topic_id -> hex color, topic_id -> root-ancestor topic_id)."""
-    colors = {
-        tid: _primary_color(r.layout).to_hex()
-        for tid, r in resolver.resolve_all_topics().items()
-    }
-
-    def root_of(tid: str, seen: frozenset[str]) -> str:
-        topic = db.topics.get(tid)
-        if topic is None or not topic.parent_ids or tid in seen:
-            return tid
-        parent = topic.parent_ids[0]
-        if parent not in db.topics:
-            return tid
-        return root_of(parent, seen | {tid})
-
-    roots = {tid: root_of(tid, frozenset()) for tid in db.topics}
-    return colors, roots
-
-
-def _element_style(
-    layout: Layout,
-    topic_ids: list[str],
-    colors: dict[str, str],
-    roots: dict[str, str],
+def element_dto(
+    resolved: ResolvedElement, incoming: dict[str, list[dict[str, str]]]
 ) -> dict[str, Any]:
-    """Style for a task/event: the left line shows the MAIN (root) topic, the
-    dot shows the specific sub-topic it belongs to."""
-    style = _style(layout)
-    if topic_ids:
-        sub = topic_ids[0]
-        dot = colors.get(sub, style["leftColor"])
-        main = colors.get(roots.get(sub, sub), dot)
-        style["leftColor"] = main
-        style["dotColor"] = dot
-    else:
-        style["dotColor"] = style["leftColor"]
-    return style
-
-
-def topic_view(resolved: Resolved) -> dict[str, Any]:
-    color = _primary_color(resolved.layout)
     return {
         "id": resolved.id,
-        "name": resolved.name,
-        "color": color.to_hex(),
-        "parentIds": list(getattr(resolved.source, "parent_ids", []) or []),
-        "style": _style(resolved.layout),
-        "tags": resolved.tags,
+        "type": resolved.type.value,
+        "virtual": resolved.virtual,
+        "attributes": {k: v for k, v in resolved.attributes.items() if k != "connections"},
+        "layout": resolved.layout.to_dict(),
+        "parents": resolved.parents,
+        "mainParent": resolved.main_parent,
+        "topic": resolved.topic,
+        "connections": [c.to_dict() for c in resolved.connections()],
+        "incoming": incoming.get(resolved.id, []),
     }
 
 
-def task_view(
-    resolved: Resolved, colors: dict[str, str], roots: dict[str, str]
-) -> dict[str, Any]:
-    attrs = resolved.attributes
-    deadline = attrs.get("deadline")
-    # `on-focus` is read from the task's OWN attributes (not inherited) so a
-    # sub-task is only surfaced when explicitly focused, matching the UI toggle.
-    own_focus = _truthy(getattr(resolved.source, "attributes", {}).get("on-focus"))
-    parent_id = getattr(resolved.source, "parent_id", None)
-    return {
-        "id": resolved.id,
-        "title": resolved.name,
-        "description": resolved.description,
-        "priority": _num(attrs.get("priority")),
-        "status": _status(attrs.get("status")),
-        "topicId": _first_topic(resolved),
-        "deadline": str(deadline) if deadline is not None else None,
-        "parentId": parent_id,
-        "onFocus": own_focus,
-        "difficulty": _num(attrs.get("difficulty")),
-        "style": _element_style(resolved.layout, resolved.topic_ids, colors, roots),
-        "tags": resolved.tags,
-        "createdAt": datetime.date.today().isoformat(),
+def definition_dto(definition: AttributeDefinition) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "name": definition.name,
+        "valueType": definition.value_type.value,
+        "appliesTo": [t.value for t in definition.applies_to],
+        "builtin": definition.builtin,
+        "inherits": definition.inherits,
     }
-
-
-def deadline_view(
-    resolved: Resolved, colors: dict[str, str], roots: dict[str, str]
-) -> dict[str, Any] | None:
-    deadline = resolved.attributes.get("deadline")
-    if deadline is None:
-        return None
-    return {
-        "id": f"{resolved.id}::deadline",
-        "title": resolved.name,
-        "date": str(deadline),
-        "priority": _num(resolved.attributes.get("priority")),
-        "topicId": _first_topic(resolved),
-        "style": _element_style(resolved.layout, resolved.topic_ids, colors, roots),
-    }
-
-
-def _is_recurring(resolved: Resolved) -> bool:
-    return any(
-        isinstance(s, (WeeklySchedule, MonthlySchedule, YearlySchedule))
-        for s in resolved.source.schedules  # type: ignore[union-attr]
-    )
+    if definition.enum_values:
+        out["enumValues"] = list(definition.enum_values)
+    if definition.minimum is not None:
+        out["min"] = definition.minimum
+    if definition.maximum is not None:
+        out["max"] = definition.maximum
+    if definition.layout is not None and not definition.layout.is_empty():
+        out["layout"] = definition.layout.to_dict()
+    return out
 
 
 def build_payload(
     db: Database,
-    window_start: datetime.date | None = None,
-    window_end: datetime.date | None = None,
+    start: datetime.date | None = None,
+    end: datetime.date | None = None,
 ) -> dict[str, Any]:
-    """Build the full frontend payload (topics, tasks, events, deadlines)."""
+    """Resolved real + virtual elements within ``[start, end]``, plus definitions."""
     today = datetime.date.today()
-    # A wide default window so a full academic year of recurring events is visible
-    # across panels (callers can still pass an explicit window).
-    start = window_start or (today - datetime.timedelta(days=60))
-    end = window_end or (today + datetime.timedelta(days=400))
+    start = start or (today - datetime.timedelta(days=31))
+    end = end or (today + datetime.timedelta(days=365))
 
-    resolver = Resolver(db)
-    topics = resolver.resolve_all_topics()
-    tasks = resolver.resolve_all_tasks()
-    events = resolver.resolve_all_events()
-    colors, roots = _topic_color_maps(resolver, db)
+    virtuals = Generator(db, Resolver(db)).generate(start, end)
+    pool = _combined_database(db, virtuals)
+    resolver = Resolver(pool)
+    incoming = _incoming_map(pool)
 
-    occurrences = build_event_occurrences(events, start, end)
-    event_items: list[dict[str, Any]] = []
-    for occ in occurrences:
-        ev = events[occ.event_id]
-        own_focus = _truthy(getattr(ev.source, "attributes", {}).get("on-focus"))
-        event_items.append(
-            {
-                "id": f"{occ.event_id}::{occ.date.to_iso()}",
-                "title": ev.name,
-                "date": occ.date.to_iso(),
-                "startTime": occ.start_time.to_hhmm() if occ.start_time else None,
-                "endTime": occ.end_time.to_hhmm() if occ.end_time else None,
-                "topicId": _first_topic(ev),
-                "description": ev.description,
-                "recurring": _is_recurring(ev),
-                "onFocus": own_focus,
-                "style": _element_style(ev.layout, ev.topic_ids, colors, roots),
-            }
-        )
-
-    deadlines = [d for t in tasks.values() if (d := deadline_view(t, colors, roots)) is not None]
-
+    elements = [element_dto(resolver.resolve(e), incoming) for e in pool.elements.values()]
     return {
-        "topics": [topic_view(t) for t in topics.values()],
-        "tasks": [task_view(t, colors, roots) for t in tasks.values()],
-        "events": event_items,
-        "deadlines": deadlines,
         "window": {"start": start.isoformat(), "end": end.isoformat()},
+        "definitions": [definition_dto(d) for d in db.attribute_defs.values()],
+        "elements": elements,
     }
 
 
-def build_timetable(db: Database) -> list[dict[str, Any]]:
-    """Weekly timetable entries: one per (recurring weekly event, weekday)."""
-    resolver = Resolver(db)
-    entries: list[dict[str, Any]] = []
-    for resolved in resolver.resolve_all_events().values():
-        for sched in resolved.source.schedules:  # type: ignore[union-attr]
-            if not isinstance(sched, WeeklySchedule):
+# ---------------------------------------------------------------------------
+# Effort — time used per topic, over a chosen period
+# ---------------------------------------------------------------------------
+
+
+def _to_date(value: Any) -> datetime.date | None:
+    if not value:
+        return None
+    try:
+        return datetime.date.fromisoformat(str(value).split("T")[0])
+    except ValueError:
+        return None
+
+
+def _duration_minutes(value: Any) -> int:
+    if not value:
+        return 0
+    try:
+        return Duration.from_string(str(value)).to_minutes()
+    except ValueError:
+        return 0
+
+
+def _element_date(resolved: ResolvedElement) -> datetime.date | None:
+    """The date that places an element in a period: event ``start``, task ``deadline``."""
+    if resolved.type is ElementType.EVENT:
+        return _to_date(resolved.attributes.get("start"))
+    if resolved.type is ElementType.TASK:
+        return _to_date(resolved.attributes.get("deadline"))
+    return None
+
+
+def _element_minutes(resolved: ResolvedElement) -> int:
+    """Time used on an element: ``timeSpent`` (events fall back to ``duration``)."""
+    if resolved.type is ElementType.EVENT:
+        return _duration_minutes(
+            resolved.attributes.get("timeSpent") or resolved.attributes.get("duration")
+        )
+    if resolved.type is ElementType.TASK:
+        return _duration_minutes(resolved.attributes.get("timeSpent"))
+    return 0
+
+
+def _min_data_date(db: Database) -> datetime.date | None:
+    """Earliest anchor date across the real elements (the natural 'beginning')."""
+    dates = [
+        d
+        for element in db.elements.values()
+        for key in ("start", "deadline", "startDate")
+        if (d := _to_date(element.attributes.get(key))) is not None
+    ]
+    return min(dates) if dates else None
+
+
+def build_effort(
+    db: Database,
+    start: datetime.date | None = None,
+    end: datetime.date | None = None,
+) -> dict[str, Any]:
+    """Per-topic time used within ``[start, end]`` (own + rolled up the topic tree).
+
+    An element counts when its anchor date (event ``start`` / task ``deadline``)
+    falls in the period. ``start`` defaults to the earliest data date ('the
+    beginning'); ``end`` defaults to today.
+    """
+    end = end or datetime.date.today()
+    start = start if start is not None else (_min_data_date(db) or end)
+    if start > end:
+        start = end
+
+    virtuals = Generator(db, Resolver(db)).generate(start, end)
+    pool = _combined_database(db, virtuals)
+    resolver = Resolver(pool)
+
+    topic_ids = [t.id for t in pool.by_type(ElementType.TOPIC)]
+    own = {tid: [0, 0] for tid in topic_ids}  # [event_minutes, task_minutes]
+    for element in pool.elements.values():
+        if element.type not in (ElementType.EVENT, ElementType.TASK):
+            continue
+        resolved = resolver.resolve(element)
+        if resolved.attributes.get("cancelled"):
+            continue
+        day = _element_date(resolved)
+        if day is None or not (start <= day <= end):
+            continue
+        topic = resolved.topic
+        if topic not in own:
+            continue
+        minutes = _element_minutes(resolved)
+        if minutes <= 0:
+            continue
+        own[topic][0 if element.type is ElementType.EVENT else 1] += minutes
+
+    children: dict[str | None, list[str]] = {}
+    for tid in topic_ids:
+        children.setdefault(resolver.main_parent(tid), []).append(tid)
+
+    memo: dict[str, tuple[int, int]] = {}
+
+    def rolled(tid: str, seen: frozenset[str]) -> tuple[int, int]:
+        if tid in memo:
+            return memo[tid]
+        events, tasks = own.get(tid, [0, 0])
+        for child in children.get(tid, []):
+            if child in seen:
                 continue
-            start_time, end_time = _times(sched)
-            for weekday in sched.week_days:
-                entries.append(
-                    {
-                        "id": f"{resolved.id}::{weekday.value}",
-                        "eventId": resolved.id,
-                        "title": resolved.name,
-                        "weekday": weekday.index(),  # 0=Mon .. 6=Sun
-                        "startTime": start_time.to_hhmm() if start_time else None,
-                        "endTime": end_time.to_hhmm() if end_time else None,
-                        "topicId": _first_topic(resolved),
-                        "location": resolved.attributes.get("location"),
-                        "style": _style(resolved.layout),
-                    }
-                )
-    return entries
+            cev, ctk = rolled(child, seen | {tid})
+            events += cev
+            tasks += ctk
+        memo[tid] = (events, tasks)
+        return memo[tid]
 
-
-def build_graph(db: Database) -> dict[str, Any]:
-    """Nodes (tasks/events) grouped by topic + typed edges, for the graph view."""
-    resolver = Resolver(db)
-    topics = [
-        {
-            "id": t.id,
-            "name": t.name,
-            "color": _primary_color(t.layout).to_hex(),
-            "parentIds": list(t.source.parent_ids),  # type: ignore[union-attr]
+    topics_out: dict[str, dict[str, int]] = {}
+    for tid in topic_ids:
+        rolled_events, rolled_tasks = rolled(tid, frozenset())
+        topics_out[tid] = {
+            "ownEvents": own[tid][0],
+            "ownTasks": own[tid][1],
+            "rolledEvents": rolled_events,
+            "rolledTasks": rolled_tasks,
         }
-        for t in resolver.resolve_all_topics().values()
-    ]
 
-    resolved_tasks = resolver.resolve_all_tasks()
-    resolved_events = resolver.resolve_all_events()
-
-    nodes: list[dict[str, Any]] = []
-    edges: list[dict[str, Any]] = []
-
-    for task in db.tasks.values():
-        resolved = resolved_tasks.get(task.id)
-        # Effective topics: a sub-task inherits its parent's topic(s).
-        eff_topics = resolved.topic_ids if resolved else list(task.topic_ids)
-        nodes.append(
-            {
-                "id": task.id,
-                "kind": "task",
-                "label": task.name,
-                "topicId": eff_topics[0] if eff_topics else None,
-                "topicIds": list(eff_topics),
-                "tags": resolved.tags if resolved else list(task.tags),
-            }
-        )
-        if task.parent_id:
-            edges.append({"source": task.id, "target": task.parent_id, "type": "subtask"})
-        for rel in task.relations:
-            edges.append({"source": task.id, "target": rel.task_id, "type": rel.type.value})
-        for link in task.event_links:
-            edges.append({"source": task.id, "target": link.event_id, "type": "event_link"})
-
-    for event in db.events.values():
-        resolved = resolved_events.get(event.id)
-        eff_topics = resolved.topic_ids if resolved else list(event.topic_ids)
-        nodes.append(
-            {
-                "id": event.id,
-                "kind": "event",
-                "label": event.name,
-                "topicId": eff_topics[0] if eff_topics else None,
-                "topicIds": list(eff_topics),
-                "tags": resolved.tags if resolved else list(event.tags),
-            }
-        )
-        if event.parent_id:
-            edges.append({"source": event.id, "target": event.parent_id, "type": "suboccurrence"})
-
-    topic_edges = [
-        {"source": t.id, "target": parent, "type": "topic_parent"}
-        for t in db.topics.values()
-        for parent in t.parent_ids
-    ]
-
-    return {"topics": topics, "nodes": nodes, "edges": edges, "topicEdges": topic_edges}
+    return {"window": {"start": start.isoformat(), "end": end.isoformat()}, "topics": topics_out}
